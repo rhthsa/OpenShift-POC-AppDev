@@ -16,7 +16,6 @@ spec:
     targetPort: 8080
   selector:
     app: backend
-    deploymentconfig: backend
     version: v1
   sessionAffinity: None
   type: ClusterIP

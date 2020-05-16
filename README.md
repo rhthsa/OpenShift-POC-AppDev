@@ -6,7 +6,12 @@
   - [Deploy Application](#deploy-application)
   - [Test Namespace's Quotas](#test-namespaces-quotas)
   - [Blue/Green Deployment with OpenShift Route](#bluegreen-deployment-with-openshift-route)
+    - [Frontend](#frontend)
+    - [Backend](#backend)
   - [Horizontal Pod Autoscalers (HPA)](#horizontal-pod-autoscalers-hpa)
+    - [by CPU](#by-cpu)
+    - [by memory](#by-memory)
+    - [by custom metrics](#by-custom-metrics)
   - [East-West Security](#east-west-security)
   - [North-South Security and control](#north-south-security-and-control)
   - [Centralized Log by ElasticSearch](#centralized-log-by-elasticsearch)
@@ -81,6 +86,8 @@ oc set volume dc/backend --remove --name=data -n namespace-2
 ```
 
 ## Blue/Green Deployment with OpenShift Route
+
+### Frontend
 - deploy frontend-v2 on namespace-1
 ```bash
 oc apply -f artifacts/frontend-v2.yaml -n namespace-1
@@ -119,7 +126,34 @@ Loop: 5
 Frontend version: v2 => [Backend: http://backend.namespace-2.svc.cluster.local:8080, Response: 200, Body: Backend version:v1, Response:200, Host:backend-1-srrhl, Status:200, Message: Hello, World]
 ```
 
+### Backend
+- deploy backend-v2 on namespace-2
+```bash
+oc apply -f artifacts/backend-v2.yaml -n namespace-2
+```
+- Run test script to frontend route
+```bash
+scripts/loop-frontend.sh
+```
+- Sample output
+```log
+Loop: 1
+Frontend version: v1 => [Backend: http://backend.namespace-2.svc.cluster.local:8080, Response: 200, Body: Backend version:v1, Response:200, Host:backend-1-72vtd, Status:200, Message: Hello, World]
+Loop: 2
+Frontend version: v1 => [Backend: http://backend.namespace-2.svc.cluster.local:8080, Response: 200, Body: Backend version:v1, Response:200, Host:backend-1-72vtd, Status:200, Message: Hello, World]
+Loop: 3
+Frontend version: v1 => [Backend: http://backend.namespace-2.svc.cluster.local:8080, Response: 200, Body: Backend version:v1, Response:200, Host:backend-1-72vtd, Status:200, Message: Hello, World]
+```
+- Blue/Green deployment for backend by configure backend service selector to select label version v2
+```bash
+oc patch service backend  -p '{"spec":{"selector":{"version":"'v2'"}}}' -n namespace-2
+#Switch back to v1
+oc patch service backend  -p '{"spec":{"selector":{"version":"'v1'"}}}' -n namespace-2
+```
+
 ## Horizontal Pod Autoscalers (HPA)
+
+### by CPU
 - Set HPA for frontend app based on CPU utilization.
 ```bash
 oc autoscale dc/frontend --min 1 --max 3 --cpu-percent=7 -n namespace-1
@@ -131,6 +165,8 @@ watch oc get hpa -n namespace-1
 siege -c 50 https://$(oc get route frontend -o jsonpath='{.spec.host}' -n namespace-1)
 oc describe PodMetrics frontend-1-9kcjq  -n namespace-1
 ```
+
+### by memory
 - Set HPA for backend based on memory utilization
 ```bash
 oc apply -f artifacts/backend-memory-hpa.yaml -n namespace-2
@@ -142,6 +178,9 @@ watch oc get hpa -n namespace-2
 siege -c 50 https://$(oc get route frontend -o jsonpath='{.spec.host}' -n namespace-1)
 oc describe
 ```
+
+### by custom metrics
+WIP
 
 ## East-West Security
 - Frontend App in namespace namespace-1 accept only request from OpenShift's router in namespace openshift-ingress
@@ -256,7 +295,7 @@ oc login --insecure-skip-tls-verify=true --server=$OCP --username=user1
 oc apply -f artifacts/service-mesh-basic-install.yaml -n user1-istio-system
 oc apply -f artifacts/memberroll.yaml -n user1-istio-system
 ```
-- Inject sidecar by annotate **sidecar.istio.io/inject** to deployment config template.
+- Inject sidecar by annotate sidecar.istio.io/inject to deployment config template.
 ```bash
 oc patch dc frontend -p '{"spec":{"template":{"metadata":{"annotations":{"sidecar.istio.io/inject":"true"}}}}}' -n namespace-1
 oc patch dc backend -p '{"spec":{"template":{"metadata":{"annotations":{"sidecar.istio.io/inject":"true"}}}}}' -n namespace-2
