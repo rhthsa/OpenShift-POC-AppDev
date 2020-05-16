@@ -1,5 +1,6 @@
 apiVersion: authentication.istio.io/v1alpha1
 kind: Policy
+#kind: RequestAuthentication
 metadata:
   name: frontend-jwt-validation
 spec:
@@ -7,8 +8,9 @@ spec:
   - name: frontend
     ports:
     - number: 8080
-  peers:
-  - mtls: {}
+  # peers:
+  # - mtls: {}
+    #  mode: STRICT
   origins:
   - jwt:
       issuer: "http://localhost:8080/auth/realms/quickstart"

@@ -9,8 +9,9 @@
   - [Horizontal Pod Autoscalers (HPA)](#horizontal-pod-autoscalers-hpa)
   - [East-West Security](#east-west-security)
   - [North-South Security and control](#north-south-security-and-control)
+- [Centralized Log by ElasticSearch](#centralized-log-by-elasticsearch)
 - [Service Mesh](#service-mesh)
-  - [Setup](#setup)
+  - [Control Plane](#control-plane)
   - [Observability with Kiali and Jaeger](#observability-with-kiali-and-jaeger)
   - [Secure Backend by mTLS](#secure-backend-by-mtls)
   - [Secure frontend by JWT](#secure-frontend-by-jwt)
@@ -233,10 +234,12 @@ spec:
       cidrSelector: 0.0.0.0/0
 ```
 
+# Centralized Log by ElasticSearch
+WIP
 
 # Service Mesh
 
-## Setup
+## Control Plane
 - Create namespace for control plane
 ```bash
 oc login --insecure-skip-tls-verify=true --server=$OCP --username=opentlc-mgr
@@ -259,7 +262,13 @@ oc patch dc backend -p '{"spec":{"template":{"metadata":{"annotations":{"sidecar
 ```
 
 ## Observability with Kiali and Jaeger
-WIP
+- Kiali graph displays application topology
+  
+  ![kiali graph](images/kiali-graph-with-istio-gateway.png)
+
+- Jaeger trasaction tracing
+  
+  ![Jaeger](images/jaeger.png)
 
 ## Secure Backend by mTLS
 - Enable mTLS for backend by create destination rule and virtual service.
@@ -324,19 +333,21 @@ curl: (56) Recv failure: Connection reset by peer
 oc apply -f artifacts/frontend-destination-rule.yaml -n namespace-1
 oc apply -f artifacts/frontend-gateway.yaml -n namespace-1
 oc apply -f artifacts/frontend-virtual-service.yaml -n namespace-1
+echo "Istio Gateway URL=> https://$(oc get route istio-ingressgateway -o jsonpath='{.spec.host}' -n user1-istio-system)"
 ```
-- Enable mTLS for frontend
-```bash
-oc apply -f artifacts/frontend-destination-rule-mtls.yaml -n namespace-1
-oc apply -f artifacts/frontend-authentication-mtls.yaml -n namespace-1
-
-```
-- Test cURL to route will failed
-- Test cURL to Istio gateway will sucess
 - Enable JWT authorization for frontend
 ```bash
 oc apply -f artifacts/frontend-jwt-with-mtls.yaml -n namespace-1
 ```
-- Test.** (Remark: still not work on OSSM1.1)**
+- Test without JWT token, wrong JWT token and valid JWT token
+```bash
+curl -v http://$(oc get route istio-ingressgateway -o jsonpath='{.spec.host}' -n user1-istio-system)
+#401 Unauthorized
+#Origin authentication failed
+curl -v -H "Authorization: Bearer $(cat artifacts/jwt-wrong-realms.txt)" http://$(oc get route istio-ingressgateway -o jsonpath='{.spec.host}' -n user1-istio-system)
+#401 Unauthorized
+#Origin authentication failed
+curl -v -H "Authorization: Bearer $(cat artifacts/token.txt)" http://$(oc get route istio-ingressgateway -o jsonpath='{.spec.host}' -n user1-istio-system)
+```
 
 
