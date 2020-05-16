@@ -9,8 +9,8 @@
   - [Horizontal Pod Autoscalers (HPA)](#horizontal-pod-autoscalers-hpa)
   - [East-West Security](#east-west-security)
   - [North-South Security and control](#north-south-security-and-control)
-- [Centralized Log by ElasticSearch](#centralized-log-by-elasticsearch)
-- [Service Mesh](#service-mesh)
+  - [Centralized Log by ElasticSearch](#centralized-log-by-elasticsearch)
+  - [Service Mesh](#service-mesh)
   - [Control Plane](#control-plane)
   - [Observability with Kiali and Jaeger](#observability-with-kiali-and-jaeger)
   - [Secure Backend by mTLS](#secure-backend-by-mtls)
@@ -235,10 +235,10 @@ spec:
       cidrSelector: 0.0.0.0/0
 ```
 
-# Centralized Log by ElasticSearch
+## Centralized Log by ElasticSearch
 WIP
 
-# Service Mesh
+## Service Mesh
 
 ## Control Plane
 - Create namespace for control plane
