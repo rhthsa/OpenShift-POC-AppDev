@@ -6,7 +6,7 @@
   - [Deploy Application](#deploy-application)
   - [Test Namespace's Quotas](#test-namespaces-quotas)
   - [Blue/Green Deployment with OpenShift Route](#bluegreen-deployment-with-openshift-route)
-  - [Horizontal Pod Autoscaler](#horizontal-pod-autoscaler)
+  - [Horizontal Pod Autoscalers (HPA)](#horizontal-pod-autoscalers-hpa)
   - [East-West Security](#east-west-security)
   - [North-South Security and control](#north-south-security-and-control)
 - [Service Mesh](#service-mesh)
@@ -118,13 +118,35 @@ Loop: 5
 Frontend version: v2 => [Backend: http://backend.namespace-2.svc.cluster.local:8080, Response: 200, Body: Backend version:v1, Response:200, Host:backend-1-srrhl, Status:200, Message: Hello, World]
 ```
 
-## Horizontal Pod Autoscaler
-WIP
+## Horizontal Pod Autoscalers (HPA)
+- Set HPA for frontend app based on CPU utilization.
+```bash
+oc autoscale dc/frontend --min 1 --max 3 --cpu-percent=7 -n namespace-1
+```
+- Check HPA status and load test
+```bash
+watch oc get hpa -n namespace-1
+#Run load test on another terminal
+siege -c 50 https://$(oc get route frontend -o jsonpath='{.spec.host}' -n namespace-1)
+oc describe PodMetrics frontend-1-9kcjq  -n namespace-1
+```
+- Set HPA for backend based on memory utilization
+```bash
+oc apply -f artifacts/backend-memory-hpa.yaml -n namespace-2
+```
+- Check HPA status and load test
+```bash
+watch oc get hpa -n namespace-2
+#Run load test on another terminal
+siege -c 50 https://$(oc get route frontend -o jsonpath='{.spec.host}' -n namespace-1)
+oc describe
+```
 
 ## East-West Security
 - Frontend App in namespace namespace-1 accept only request from OpenShift's router in namespace openshift-ingress
 ```bash
-#Consider edit default project template to start with deny all
+
+# Consider edit default project template to start with deny all
 oc apply -f artifacts/network-policy-deny-from-all.yaml -n namespace-1
 oc apply -f artifacts/network-policy-allow-network-policy-global.yaml -n namespace-1
 ```
