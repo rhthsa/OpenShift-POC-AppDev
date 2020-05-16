@@ -1,0 +1,28 @@
+apiVersion: authentication.istio.io/v1alpha1
+kind: Policy
+metadata:
+  name: frontend-jwt-validation
+spec:
+  targets:
+  - name: frontend
+    ports:
+    - number: 8080
+  peers:
+  - mtls: {}
+  origins:
+  - jwt:
+      issuer: "http://localhost:8080/auth/realms/quickstart"
+      audiences:
+      - "curl"
+      jwksUri: "https://gitlab.com/workshop6/service-mesh/raw/master/keycloak/jwks.json"
+      triggerRules:
+      - excludedPaths:  
+        - exact: /version
+        # includedPaths:
+        # - prefix: /some.path/
+  principalBinding: USE_ORIGIN
+  # Get jwks from Keycloak/RHSSO
+  # curl http://localhost:8080/auth/realms/{Realm}/protocol/openid-connect/certs
+  # Login to Keycloak/RHSSO
+  # curl --location --request POST 'http://localhost:8080/auth/realms/${Realm}/protocol/openid-connect/token' --header 'Content-Type: application/x-www-form-urlencoded' --data-urlencode 'username=operator' --data-urlencode 'password=password' --data-urlencode 'client_id=curl' --data-urlencode 'grant_type=password'
+  

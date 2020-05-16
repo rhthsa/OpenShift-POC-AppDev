@@ -1,0 +1,20 @@
+apiVersion: networking.istio.io/v1alpha3
+kind: DestinationRule
+metadata:
+  name: backend-destination-rule
+spec:
+  host: backend
+  trafficPolicy:
+      loadBalancer:
+        simple: ROUND_ROBIN
+      tls:
+        mode: ISTIO_MUTUAL
+  # subsets:
+  # - name: v1
+  #   labels:
+  #     app: backend
+  #     version: v1   
+  # - name: v2
+  #   labels:
+  #     app: backend
+  #     version: v2

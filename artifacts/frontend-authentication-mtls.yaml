@@ -1,0 +1,11 @@
+apiVersion: "authentication.istio.io/v1alpha1"
+kind: "Policy"
+metadata:
+  name: frontend-authentication-mtls
+spec:
+  targets:
+  - name: frontend
+    ports:
+    - number: 8080
+  peers:
+  - mtls: {}
