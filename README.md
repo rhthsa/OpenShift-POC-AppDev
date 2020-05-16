@@ -124,6 +124,7 @@ WIP
 ## East-West Security
 - Frontend App in namespace namespace-1 accept only request from OpenShift's router in namespace openshift-ingress
 ```bash
+#Consider edit default project template to start with deny all
 oc apply -f artifacts/network-policy-deny-from-all.yaml -n namespace-1
 oc apply -f artifacts/network-policy-allow-network-policy-global.yaml -n namespace-1
 ```
