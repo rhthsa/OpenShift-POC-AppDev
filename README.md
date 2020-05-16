@@ -11,6 +11,7 @@
   - [North-South Security and control](#north-south-security-and-control)
 - [Service Mesh](#service-mesh)
   - [Setup](#setup)
+  - [Observability with Kiali and Jaeger](#observability-with-kiali-and-jaeger)
   - [Secure Backend by mTLS](#secure-backend-by-mtls)
   - [Secure frontend by JWT](#secure-frontend-by-jwt)
 
@@ -233,8 +234,10 @@ oc apply -f artifacts/memberroll.yaml -n user1-istio-system
 ```bash
 oc patch dc frontend -p '{"spec":{"template":{"metadata":{"annotations":{"sidecar.istio.io/inject":"true"}}}}}' -n namespace-1
 oc patch dc backend -p '{"spec":{"template":{"metadata":{"annotations":{"sidecar.istio.io/inject":"true"}}}}}' -n namespace-2
-- Check Kiali Console
 ```
+
+## Observability with Kiali and Jaeger
+WIP
 
 ## Secure Backend by mTLS
 - Enable mTLS for backend by create destination rule and virtual service.
