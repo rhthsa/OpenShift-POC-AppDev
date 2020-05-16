@@ -15,6 +15,7 @@
   - [Observability with Kiali and Jaeger](#observability-with-kiali-and-jaeger)
   - [Secure Backend by mTLS](#secure-backend-by-mtls)
   - [Secure frontend by JWT](#secure-frontend-by-jwt)
+  - [Service Mesh Egress Policy](#service-mesh-egress-policy)
 
 <!-- /TOC -->
 
@@ -350,4 +351,8 @@ curl -v -H "Authorization: Bearer $(cat artifacts/jwt-wrong-realms.txt)" http://
 curl -v -H "Authorization: Bearer $(cat artifacts/token.txt)" http://$(oc get route istio-ingressgateway -o jsonpath='{.spec.host}' -n user1-istio-system)
 ```
 
+## Service Mesh Egress Policy
+- Remove egress firewall
+- Add Istio's egress policy
+WIP
 
