@@ -180,7 +180,37 @@ oc describe
 ```
 
 ### by custom metrics
-WIP
+**Remark: Custom Web Portal need to provides list of operators**
+- Create namespace for Prometheus and Grafana
+```bash
+oc login --insecure-skip-tls-verify=true --server=$OCP --username=opentlc-mgr
+oc new-project user1-app-monitor --display-name="User1 - application monitor"
+oc label namespace user1-app-monitor role=app-monitor
+```
+- Set network policy for namespace-2 to allow traffic from user1-app-monitor
+```bash
+oc apply -f artifacts/network-policy-allow-from-app-monitor.yaml -n namespace-2
+```
+- Setup Promethues in namespace user1-app-monitor by crete CRD resources
+```bash
+#Service Account steps need cluster admin roles.
+oc login --insecure-skip-tls-verify=true --server=$OCP --username=opentlc-mgr
+oc apply -f artifacts/prometheus-service-account.yaml -n user1-app-monitor
+oc login --insecure-skip-tls-verify=true --server=$OCP --username=usr1
+oc apply -f artifacts/prometheus-service-monitor.yaml -n user1-app-monitor
+oc apply -f artifacts/prometheus.yaml -n user1-app-monitor
+oc create route edge prometheus --service=prometheus --port=9090 -n user1-app-monitor
+echo "https://$(oc get route prometheus -n user1-app-monitor -o jsonpath='{.spec.host}')"
+```
+- Check prometheus console for Target and test query
+- Setup Grafana in namespace user1-app-monitor by crete CRD resources
+```bash
+oc apply -f artifacts/grafana_datasource.yaml -n user1-app-monitor
+oc apply -f artifacts/grafana.yaml -n user1-app-monitor
+oc apply -f artifacts/grafana_dashboard.yaml -n user1-app-monitor
+echo "https://$(oc get route grafana-route -n user1-app-monitor -o jsonpath='{.spec.host}')"
+```
+- Check backend metrics on Grafana
 
 ## East-West Security
 - Frontend App in namespace namespace-1 accept only request from OpenShift's router in namespace openshift-ingress
