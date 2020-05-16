@@ -12,6 +12,8 @@
     - [by CPU](#by-cpu)
     - [by memory](#by-memory)
     - [by custom metrics](#by-custom-metrics)
+      - [Setup Prometheus and Grafana (Optional)](#setup-prometheus-and-grafana-optional)
+      - [Custom HPA](#custom-hpa)
   - [East-West Security](#east-west-security)
   - [North-South Security and control](#north-south-security-and-control)
   - [Centralized Log by ElasticSearch](#centralized-log-by-elasticsearch)
@@ -180,6 +182,8 @@ oc describe
 ```
 
 ### by custom metrics
+
+#### Setup Prometheus and Grafana (Optional)
 **Remark: Custom Web Portal need to provides list of operators**
 - Create namespace for Prometheus and Grafana
 ```bash
@@ -211,6 +215,8 @@ oc apply -f artifacts/grafana_dashboard.yaml -n user1-app-monitor
 echo "https://$(oc get route grafana-route -n user1-app-monitor -o jsonpath='{.spec.host}')"
 ```
 - Check backend metrics on Grafana
+
+#### Custom HPA
 
 ## East-West Security
 - Frontend App in namespace namespace-1 accept only request from OpenShift's router in namespace openshift-ingress
