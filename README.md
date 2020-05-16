@@ -50,10 +50,9 @@ oc login --insecure-skip-tls-verify=true --server=$OCP --username=user2
 oc apply -f artifacts/dummy.yaml -n namespace-3
 oc login --insecure-skip-tls-verify=true --server=$OCP --username=user1
 oc apply -f artifacts/backend.yaml -n namespace-2
-#Need to fix expose dc because service port format is not comply with kiali
-oc expose dc/backend -n namespace-2
+oc apply -f artifacts/backend-service.yaml -n namespace-2
 oc apply -f artifacts/frontend.yaml -n namespace-1
-oc expose dc/frontend -n namespace-1
+oc apply -f artifacts/frontend-service.yaml -n namespace-1
 oc create route edge frontend --service=frontend --port=8080 -n namespace-1
 echo "Front End URL=> https://$(oc get route frontend -o jsonpath='{.spec.host}' -n namespace-1)"
 ```
