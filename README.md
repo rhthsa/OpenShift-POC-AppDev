@@ -15,14 +15,17 @@
       - [Setup Prometheus and Grafana (Optional)](#setup-prometheus-and-grafana-optional)
       - [Custom HPA](#custom-hpa)
   - [East-West Security](#east-west-security)
+    - [Network Policy](#network-policy)
   - [North-South Security and control](#north-south-security-and-control)
+    - [Ingress](#ingress)
+    - [Egress](#egress)
   - [Centralized Log by ElasticSearch](#centralized-log-by-elasticsearch)
   - [Service Mesh](#service-mesh)
-  - [Control Plane](#control-plane)
-  - [Observability with Kiali and Jaeger](#observability-with-kiali-and-jaeger)
-  - [Secure Backend by mTLS](#secure-backend-by-mtls)
-  - [Secure frontend by JWT](#secure-frontend-by-jwt)
-  - [Service Mesh Egress Policy](#service-mesh-egress-policy)
+    - [Control Plane](#control-plane)
+    - [Observability with Kiali and Jaeger](#observability-with-kiali-and-jaeger)
+    - [Secure Backend by mTLS](#secure-backend-by-mtls)
+    - [Secure frontend by JWT](#secure-frontend-by-jwt)
+    - [Service Mesh Egress Policy](#service-mesh-egress-policy)
 
 <!-- /TOC -->
 
@@ -219,6 +222,8 @@ echo "https://$(oc get route grafana-route -n user1-app-monitor -o jsonpath='{.s
 #### Custom HPA
 
 ## East-West Security
+
+### Network Policy
 - Frontend App in namespace namespace-1 accept only request from OpenShift's router in namespace openshift-ingress
 ```bash
 
@@ -281,6 +286,8 @@ spec:
 ```
 
 ## North-South Security and control
+
+### Ingress
 - For ingress traffic, IP whitelist can be set to each route.
 ```bash
 oc annotate route frontend haproxy.router.openshift.io/ip_whitelist=13.52.0.0/16 -n namespace-1
@@ -294,6 +301,8 @@ oc annotate route frontend haproxy.router.openshift.io/rate-limit-connections.ra
 ```bash
 oc apply -f artifacts/egress-namespace-2.yaml -n namespace-2
 ```
+
+### Egress
 - Egress policy to deny all external IP except DNS name httpbin.org
 ```yaml
 kind: EgressNetworkPolicy
@@ -315,7 +324,7 @@ WIP
 
 ## Service Mesh
 
-## Control Plane
+### Control Plane
 - Create namespace for control plane
 ```bash
 oc login --insecure-skip-tls-verify=true --server=$OCP --username=opentlc-mgr
@@ -337,7 +346,7 @@ oc patch dc frontend -p '{"spec":{"template":{"metadata":{"annotations":{"sideca
 oc patch dc backend -p '{"spec":{"template":{"metadata":{"annotations":{"sidecar.istio.io/inject":"true"}}}}}' -n namespace-2
 ```
 
-## Observability with Kiali and Jaeger
+### Observability with Kiali and Jaeger
 - Kiali graph displays application topology
   
   ![kiali graph](images/kiali-graph-with-istio-gateway.png)
@@ -346,7 +355,7 @@ oc patch dc backend -p '{"spec":{"template":{"metadata":{"annotations":{"sidecar
   
   ![Jaeger](images/jaeger.png)
 
-## Secure Backend by mTLS
+### Secure Backend by mTLS
 - Enable mTLS for backend by create destination rule and virtual service.
 ```bash
 oc apply -f artifacts/backend-destination-rule.yaml -n namespace-2
@@ -403,7 +412,7 @@ curl: (56) Recv failure: Connection reset by peer
 - Connect to frontend pod terminal and cURL to backend service.
 - cURL to frontend's route to verify that route still working properly.
 
-## Secure frontend by JWT
+### Secure frontend by JWT
 - Create destination rule, gateway virtual service for frontend
 ```bash
 oc apply -f artifacts/frontend-destination-rule.yaml -n namespace-1
@@ -426,7 +435,7 @@ curl -v -H "Authorization: Bearer $(cat artifacts/jwt-wrong-realms.txt)" http://
 curl -v -H "Authorization: Bearer $(cat artifacts/token.txt)" http://$(oc get route istio-ingressgateway -o jsonpath='{.spec.host}' -n user1-istio-system)
 ```
 
-## Service Mesh Egress Policy
+### Service Mesh Egress Policy
 - Remove egress firewall
 - Add Istio's egress policy
 WIP
