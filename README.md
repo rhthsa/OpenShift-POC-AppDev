@@ -4,7 +4,11 @@
 - [Container Platform - Demo](#container-platform---demo)
   - [Create Namespaces](#create-namespaces)
   - [Deploy Application](#deploy-application)
-  - [Test Namespace's Quotas](#test-namespaces-quotas)
+    - [Deploy user2 app](#deploy-user2-app)
+    - [Deploy Frontend app](#deploy-frontend-app)
+    - [Deploy Backend app (Helm Chart)](#deploy-backend-app-helm-chart)
+    - [Verify Installation](#verify-installation)
+  - [Namespace's Quotas](#namespaces-quotas)
   - [Blue/Green Deployment with OpenShift Route](#bluegreen-deployment-with-openshift-route)
     - [Frontend](#frontend)
     - [Backend](#backend)
@@ -55,28 +59,102 @@ oc apply -f artifacts/size-s-quotas.yaml -n namespace-3
 ```
 
 ## Deploy Application
-- Deploy frontend and backend app using deployment config yaml files.
- ** Remark: consider to deploy using helm chart**
+
+### Deploy user2 app
+- Deploy dummy app by deployment config YAML file
 ```bash
 oc login --insecure-skip-tls-verify=true --server=$OCP --username=user2
 oc apply -f artifacts/dummy.yaml -n namespace-3
+oc get pods -n namespace-3
+```
+
+### Deploy Frontend app
+- Deploy frontend app.
+```bash
 oc login --insecure-skip-tls-verify=true --server=$OCP --username=user1
-oc apply -f artifacts/backend.yaml -n namespace-2
-oc apply -f artifacts/backend-service.yaml -n namespace-2
 oc apply -f artifacts/frontend.yaml -n namespace-1
 oc apply -f artifacts/frontend-service.yaml -n namespace-1
 oc create route edge frontend --service=frontend --port=8080 -n namespace-1
 echo "Front End URL=> https://$(oc get route frontend -o jsonpath='{.spec.host}' -n namespace-1)"
 ```
-- Check Administration and Develor Console for applications's configuration, Namespace quotas and namespace's utilization.
+
+<!-- - Deploy backend app
+```bash
+oc login --insecure-skip-tls-verify=true --server=$OCP --username=user1
+oc apply -f artifacts/backend.yaml -n namespace-2
+oc apply -f artifacts/backend-service.yaml -n namespace-2
+echo "Backend Internal End URL=> http://$(oc get svc backend  -o jsonpath='{.spec.ports[0].port}'  -n namespace-2)" 
+```-->
+
+### Deploy Backend app (Helm Chart)
+- Deploy backend app using helm chart.
+- Dry run backend chart
+```bash
+oc project -n namespace-2
+helm install --dry-run test ./backend-chart
+```
+- Install chart
+```bash
+helm install backend-v1 ./backend-chart
+#Sample Output
+NAME: backend-v1
+LAST DEPLOYED: Mon May 18 10:33:26 2020
+NAMESPACE: namespace-2
+STATUS: deployed
+REVISION: 1
+TEST SUITE: None
+NOTES:
+1. Get the application URL by running these commands:
+http://backend:8080
+```
+
+### Verify Installation
+- Check pods on namespace-1 and namespace-2
+```bash
+oc get pods -n namespace-1
+#Sample output
+NAME                READY   STATUS      RESTARTS   AGE
+frontend-1-b2w7p    1/1     Running     0          8m37s
+frontend-1-deploy   0/1     Completed   0          8m34s
+oc get pods -n namespace-2
+#Sample output
+NAME               READY   STATUS      RESTARTS   AGE
+backend-1-deploy   0/1     Completed   0          5s
+backend-1-pdkf9    1/1     Running     0          8s
+```
+
+- Check Develor Console for applications's configuration
+
+![frontend app](images/frontend-app.png)
+
+![backend app](images/backend-app.png)
   
-## Test Namespace's Quotas
+## Namespace's Quotas
+- Check Namespace's quotas on Project Details on Web Developer Console
+
+![project details - resources quota](images/project-details-resource-quotas.png)
+
+- Drill down to Resource Quota details view
+
+![resource quota details](images/resource-quota-details.png)
+
 - Scale pod to 8
 ```bash
 oc scale dc/backend --replicas=8 -n namespace-2
+#Or use developer console
 ```
-- Check Web Console for namespace's resource quotas.
+- Check Web Console for namespace-2's resource quotas.
+
+![namespace-2 8 pods](images/namespace-2-8-pods.png)
+
 - Create 3 more pods. This will exceeded quota's of request CPU and memory.
+
+![namesapce-2 11 pods](images/namespace-2-11-pods.png)
+
+- Check alert in event viewer.
+
+![quota exceeded alert](images/quota-exceeded-alert.png)
+)
 - Scale down to 1 pod and add persistent volume claim (PVC) to pod. Then scale to 2 pod and check namespace's resource quotas. (Still cannot scale need to fix this)
 ```bash
 oc scale dc/backend --replicas=1 -n namespace-2
