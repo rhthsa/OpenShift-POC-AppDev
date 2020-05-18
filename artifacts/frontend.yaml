@@ -52,7 +52,7 @@ spec:
         livenessProbe:
           failureThreshold: 2
           httpGet:
-            path: /satus
+            path: /status
             port: 8080
             scheme: HTTP
           initialDelaySeconds: 5
@@ -62,10 +62,10 @@ spec:
         readinessProbe:
           failureThreshold: 1
           httpGet:
-            path: /satus
+            path: /status
             port: 8080
             scheme: HTTP
-          initialDelaySeconds: 5
+          initialDelaySeconds: 7
           periodSeconds: 5
           successThreshold: 1
           timeoutSeconds: 1
