@@ -12,6 +12,8 @@ imagePullSecrets: []
 nameOverride: ""
 fullnameOverride: ""
 
+sidecar: false
+
 env:
   appBackend: https://httpbin.org/status/200
 
