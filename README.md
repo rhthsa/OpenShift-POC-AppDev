@@ -439,7 +439,8 @@ siege -c 5 https://$(oc get route frontend -o jsonpath='{.spec.host}' -n namespa
 
 ### Secure Backend by mTLS
 - Enable mTLS for backend by create destination rule and virtual service.
-**Remark: WIP - mTLS not work with readiness/liveness probe. Need to configure more**
+**Remark: WIP - if deployment contains liveness/readiness probe**
+**Need to configure annotation  sidecar.istio.io/rewriteAppHTTPProbers: "true"**
 ```bash
 oc apply -f artifacts/backend-destination-rule.yaml -n namespace-2
 oc apply -f artifacts/backend-virtual-service.yaml -n namespace-2
