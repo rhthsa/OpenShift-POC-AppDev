@@ -60,7 +60,7 @@ spec:
             memory: 4G
       # increase random sampling rate for development/testing
       traceSampling: 100.0
-    grafana.enabled: true
+    grafana.enabled: false
     kiali:
       enabled: true
       view_only_mode: false
