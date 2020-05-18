@@ -485,6 +485,20 @@ curl -v -H "Authorization: Bearer $(cat artifacts/token.txt)" http://$(oc get ro
 
 ### Service Mesh Egress Policy
 - Remove egress firewall
-- Add Istio's egress policy
-WIP
+```bash
+oc login --insecure-skip-tls-verify=true --server=$OCP --username=opentlc-mgr
+oc delete -f artifacts/egress-namespace-2.yaml -n namespace-2
+```
+- Set control plane configuration to disallow egress traffic by default
+```bash
+ oc get configmap istio -n user1-istio-system -o yaml \
+  | sed 's/mode: ALLOW_ANY/mode: REGISTRY_ONLY/g' \
+  | oc replace -n user1-istio-system -f -
+```
+- Create egerss service entry to allow https request to httpbin.org
+```bash
+oc apply -f artifacts/egress-serviceentry.yml -n user1-istio-system
+```
+- Check kiali graph
 
+![egress service entry](images/kiali-egress-service-entry.png)
