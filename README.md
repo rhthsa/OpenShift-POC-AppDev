@@ -421,7 +421,9 @@ oc apply -f artifacts/service-mesh-memberroll.yaml -n user1-istio-system
 - Inject sidecar by annotate sidecar.istio.io/inject to deployment config template.
 ```bash
 oc patch dc frontend -p '{"spec":{"template":{"metadata":{"annotations":{"sidecar.istio.io/inject":"true"}}}}}' -n namespace-1
+oc patch dc frontend -p '{"spec":{"template":{"metadata":{"annotations":{"sidecar.istio.io/rewriteAppHTTPProbers":"true"}}}}}' -n namespace-1
 oc patch dc backend -p '{"spec":{"template":{"metadata":{"annotations":{"sidecar.istio.io/inject":"true"}}}}}' -n namespace-2
+oc patch dc backend -p '{"spec":{"template":{"metadata":{"annotations":{"sidecar.istio.io/rewriteAppHTTPProbers":"true"}}}}}' -n namespace-2
 ```
 
 ### Observability with Kiali and Jaeger
@@ -439,7 +441,6 @@ siege -c 5 https://$(oc get route frontend -o jsonpath='{.spec.host}' -n namespa
 
 ### Secure Backend by mTLS
 - Enable mTLS for backend by create destination rule and virtual service.
-**Remark: WIP - if deployment contains liveness/readiness probe**
 **Need to configure annotation  sidecar.istio.io/rewriteAppHTTPProbers: "true"**
 ```bash
 oc apply -f artifacts/backend-destination-rule.yaml -n namespace-2
@@ -479,6 +480,7 @@ curl -v -H "Authorization: Bearer $(cat artifacts/jwt-wrong-realms.txt)" http://
 #401 Unauthorized
 #Origin authentication failed
 curl -v -H "Authorization: Bearer $(cat artifacts/token.txt)" http://$(oc get route istio-ingressgateway -o jsonpath='{.spec.host}' -n user1-istio-system)
+#Success
 ```
 
 ### Service Mesh Egress Policy
