@@ -416,7 +416,7 @@ oc apply -f artifacts/network-poliy-allow-from-istio-system.yaml -n namespace-2
 ```bash
 oc login --insecure-skip-tls-verify=true --server=$OCP --username=user1
 oc apply -f artifacts/service-mesh-basic-install.yaml -n user1-istio-system
-oc apply -f artifacts/memberroll.yaml -n user1-istio-system
+oc apply -f artifacts/service-mesh-memberroll.yaml -n user1-istio-system
 ```
 - Inject sidecar by annotate sidecar.istio.io/inject to deployment config template.
 ```bash
@@ -425,9 +425,13 @@ oc patch dc backend -p '{"spec":{"template":{"metadata":{"annotations":{"sidecar
 ```
 
 ### Observability with Kiali and Jaeger
+- Run load test tool
+```bash
+siege -c 5 https://$(oc get route frontend -o jsonpath='{.spec.host}' -n namespace-1)
+```
 - Kiali graph displays application topology
   
-  ![kiali graph](images/kiali-graph-with-istio-gateway.png)
+  ![kiali graph](images/kiali-graph.png)
 
 - Jaeger trasaction tracing
   
@@ -435,50 +439,13 @@ oc patch dc backend -p '{"spec":{"template":{"metadata":{"annotations":{"sidecar
 
 ### Secure Backend by mTLS
 - Enable mTLS for backend by create destination rule and virtual service.
+**Remark: WIP - mTLS not work with readiness/liveness probe. Need to configure more**
 ```bash
 oc apply -f artifacts/backend-destination-rule.yaml -n namespace-2
 oc apply -f artifacts/backend-virtual-service.yaml -n namespace-2
 oc apply -f artifacts/backend-authenticate-mtls.yaml -n namespace-2
 ```
-- Destination rule and virtual service yaml files
-```yaml
-apiVersion: networking.istio.io/v1alpha3
-kind: DestinationRule
-metadata:
-  name: backend-destination-rule
-spec:
-  host: backend
-  trafficPolicy:
-      loadBalancer:
-        simple: ROUND_ROBIN
-      tls:
-        mode: ISTIO_MUTUAL
----
-apiVersion: networking.istio.io/v1alpha3
-kind: VirtualService
-metadata:
-  name: backend-virtual-service
-spec:
-  hosts:
-  - backend
-  http:
-  - route:
-    - destination:
-        host: backend
----
-apiVersion: "authentication.istio.io/v1alpha1"
-kind: "Policy"
-metadata:
-  name: backend-authenticate-mtls
-spec:
-  targets:
-  - name: backend
-    ports:
-    - number: 8080
-  peers:
-  - mtls: {}
-```
-- Create dummy appliation on namespace-1. Dummy pod will not contains sidecar because there is no sidecar.istio.io/inject annotation.
+- Create dummy pod (without sidecar) on namespace-1 
 ```bash
 oc apply -f artifacts/dummy.yaml -n namespace-1
 ```
