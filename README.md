@@ -15,15 +15,16 @@
   - [Horizontal Pod Autoscalers (HPA)](#horizontal-pod-autoscalers-hpa)
     - [by CPU](#by-cpu)
     - [by memory](#by-memory)
-    - [by custom metrics](#by-custom-metrics)
       - [Setup Prometheus and Grafana (Optional)](#setup-prometheus-and-grafana-optional)
-      - [Custom HPA](#custom-hpa)
+      - [Custom HPA -->](#custom-hpa)
   - [East-West Security](#east-west-security)
     - [Network Policy](#network-policy)
   - [North-South Security and control](#north-south-security-and-control)
     - [Ingress](#ingress)
     - [Egress](#egress)
-  - [Centralized Log by ElasticSearch](#centralized-log-by-elasticsearch)
+  - [Log & Metrics Monitoring](#log--metrics-monitoring)
+    - [Utilization Dashboard](#utilization-dashboard)
+    - [ElasticSearch](#elasticsearch)
   - [Service Mesh](#service-mesh)
     - [Control Plane](#control-plane)
     - [Observability with Kiali and Jaeger](#observability-with-kiali-and-jaeger)
@@ -143,7 +144,7 @@ backend-1-pdkf9    1/1     Running     0          8s
 oc scale dc/backend --replicas=8 -n namespace-2
 #Or use developer console
 ```
-- Check Web Console for namespace-2's resource quotas.
+- Check Web Console for namespace-2 resource quotas.
 
 ![namespace-2 8 pods](images/namespace-2-8-pods.png)
 
@@ -155,23 +156,71 @@ oc scale dc/backend --replicas=8 -n namespace-2
 
 ![quota exceeded alert](images/quota-exceeded-alert.png)
 )
-- Scale down to 1 pod and add persistent volume claim (PVC) to pod. Then scale to 2 pod and check namespace's resource quotas. (Still cannot scale need to fix this)
+- Apply [size M](artifacts/size-m-quotas.yaml) 
 ```bash
-oc scale dc/backend --replicas=1 -n namespace-2
-#Remark: still not work. Cannot scale pod
-oc set volume dc/backend --add --name=data --type=persistentVolumeClaim --claim-name=backend \
---claim-size=50M --claim-mode='ReadWriteOnce' --mount-path=/data --containers=backend -n namespace-2
-oc scale dc/backend --replicas=2 -n namespace-2
+oc apply -f artifacts/size-m-quotas.yaml -n namespace-2
+oc delete -f artifacts/size-s-quotas.yaml -n namespace-2
 ```
-- Remove (PVC)
+- Check Web Console for namespace-2 resource quotas. CPU request will be 50% used.
+
+![namespace-2 11 pods with size M](images/namespace-2-size-m-11-pods.png)
+
+- Scale to 12 pods and check number of backend pods on namespace-2
+```bash
+oc scale dc/backend --replicas=12 -n namespace-2
+oc get pods -n namespace-2 | grep backend | grep Running | wc -l
+```
+
+- Reapply [size S](artifacts/size-s-quotas.yaml) and check resource quotas
+```bash
+oc apply -f artifacts/size-s-quotas.yaml -n namespace-2
+oc delete -f artifacts/size-m-quotas.yaml -n namespace-2
+```
+Utilization
+
+![namespace-2 exceeded quotas](images/namespace-2-exceeded-quotas.png)
+
+- Scale backend pod to 1 and claim storage for 2 GB
+```bash
+oc project namespace-2
+oc scale dc/backend --replicas=1 -n namespace-2
+watch oc get pods
+oc set volume dc/backend --add --name=data --type=persistentVolumeClaim --claim-name=data \
+--claim-size=2Gi --claim-mode='ReadWriteOnce' --mount-path=/data --containers=backend -n namespace-2
+watch oc get pods
+```
+- Check PVC claim
+```bash
+oc get pvc -n namespace-2
+#Sample Output
+NAME   STATUS   VOLUME                                     CAPACITY   ACCESS MODES   STORAGECLASS   AGE
+data   Bound    pvc-08d07d60-b240-4b6d-94b1-a2d5df1b9203   2Gi        RWO            gp2            7m17s
+```
+- Check Web Console for namespace-2 resource quotas.
+
+![namespace-2 storage quotas](images/namespace-2-storage-quotas.png)
+
+- Create new deployment ([dummy-with-pvc.yaml](artifacts/dummy-with-pvc.yaml)) with 2 GB persistent volume claim
+```bash
+oc apply -f artifacts/dummy.yaml -n namespace-2
+oc set volume dc/dummy --add --name=data --type=persistentVolumeClaim --claim-name=data2 \
+--claim-size=2Gi --claim-mode='ReadWriteOnce' --mount-path=/data --containers=dummy -n namespace-2
+```
+- Persistent volume claim will faied because quota is 3 GB
+```bash
+error: failed to patch volume update to pod template: persistentvolumeclaims "data2" is forbidden: exceeded quota: size-s-quotas, requested: requests.storage=2Gi, used: requests.storage=2Gi, limited: requests.storage=3Gi
+```
+- Remove persistent volume claim from backend and delete dummy deployment.
 ```bash
 oc set volume dc/backend --remove --name=data -n namespace-2
+oc delete pvc data -n namespace-2
+oc delete -f artifacts/dummy.yaml -n namespace-2
 ```
 
 ## Blue/Green Deployment with OpenShift Route
 
 ### Frontend
-- deploy frontend-v2 on namespace-1
+- deploy frontend-v2 on namespace-1.
 ```bash
 oc apply -f artifacts/frontend-v2.yaml -n namespace-1
 oc expose dc/frontend-v2 -n namespace-1
@@ -262,7 +311,7 @@ siege -c 50 https://$(oc get route frontend -o jsonpath='{.spec.host}' -n namesp
 oc describe
 ```
 
-### by custom metrics
+<!-- ### by custom metrics
 
 #### Setup Prometheus and Grafana (Optional)
 **Remark: Custom Web Portal need to provides list of operators**
@@ -297,7 +346,7 @@ echo "https://$(oc get route grafana-route -n user1-app-monitor -o jsonpath='{.s
 ```
 - Check backend metrics on Grafana
 
-#### Custom HPA
+#### Custom HPA -->
 
 ## East-West Security
 
@@ -397,8 +446,13 @@ spec:
       cidrSelector: 0.0.0.0/0
 ```
 
-## Centralized Log by ElasticSearch
-WIP
+## Log & Metrics Monitoring
+
+### Utilization Dashboard
+- WIP
+
+### ElasticSearch
+- WIP
 
 ## Service Mesh
 
