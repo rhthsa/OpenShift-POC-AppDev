@@ -449,7 +449,7 @@ spec:
 ## Log & Metrics Monitoring
 
 ### Utilization Dashboard
-- WIP
+- 
 
 ### ElasticSearch
 - WIP
