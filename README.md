@@ -3,28 +3,26 @@
 
 - [Container Platform - Demo](#container-platform---demo)
   - [Create Namespaces](#create-namespaces)
-  - [Deploy Application](#deploy-application)
+  - [Deploy Applications](#deploy-applications)
     - [Deploy user2 app](#deploy-user2-app)
     - [Deploy Frontend app](#deploy-frontend-app)
     - [Deploy Backend app (Helm Chart)](#deploy-backend-app-helm-chart)
     - [Verify Installation](#verify-installation)
   - [Namespace's Quotas](#namespaces-quotas)
-  - [Blue/Green Deployment with OpenShift Route](#bluegreen-deployment-with-openshift-route)
+  - [Blue/Green Deployment](#bluegreen-deployment)
     - [Frontend](#frontend)
     - [Backend](#backend)
   - [Horizontal Pod Autoscalers (HPA)](#horizontal-pod-autoscalers-hpa)
     - [by CPU](#by-cpu)
     - [by memory](#by-memory)
-      - [Setup Prometheus and Grafana (Optional)](#setup-prometheus-and-grafana-optional)
-      - [Custom HPA -->](#custom-hpa)
   - [East-West Security](#east-west-security)
     - [Network Policy](#network-policy)
   - [North-South Security and control](#north-south-security-and-control)
     - [Ingress](#ingress)
-    - [Egress](#egress)
   - [Log & Metrics Monitoring](#log--metrics-monitoring)
-    - [Utilization Dashboard](#utilization-dashboard)
-    - [ElasticSearch](#elasticsearch)
+    - [Operation and Application Log](#operation-and-application-log)
+    - [Cluster Metrics and Utilization](#cluster-metrics-and-utilization)
+    - [Applications Metrics](#applications-metrics)
   - [Service Mesh](#service-mesh)
     - [Control Plane](#control-plane)
     - [Observability with Kiali and Jaeger](#observability-with-kiali-and-jaeger)
@@ -52,14 +50,14 @@ oc policy add-role-to-user edit user1 -n namespace-1
 oc policy add-role-to-user edit user1 -n namespace-2
 oc policy add-role-to-user edit user2 -n namespace-3
 ```
-- Assign quotas to namespaces
+- Assign [size S quotas](artifacts/size-s-quotas.yaml) to namespace-1, namespace-2 and namespace-3
 ```bash
 oc apply -f artifacts/size-s-quotas.yaml -n namespace-1
 oc apply -f artifacts/size-s-quotas.yaml -n namespace-2
 oc apply -f artifacts/size-s-quotas.yaml -n namespace-3
 ```
 
-## Deploy Application
+## Deploy Applications
 
 ### Deploy user2 app
 - Deploy dummy app by deployment config YAML file
@@ -70,13 +68,14 @@ oc get pods -n namespace-3
 ```
 
 ### Deploy Frontend app
-- Deploy frontend app.
+- Deploy frontend app with [frontend.yaml](artifacts/frontend.yaml) and [frontend-service.yaml](artifacts/frontend-service.yaml)
 ```bash
 oc login --insecure-skip-tls-verify=true --server=$OCP --username=user1
 oc apply -f artifacts/frontend.yaml -n namespace-1
 oc apply -f artifacts/frontend-service.yaml -n namespace-1
 oc create route edge frontend --service=frontend --port=8080 -n namespace-1
 echo "Front End URL=> https://$(oc get route frontend -o jsonpath='{.spec.host}' -n namespace-1)"
+export FRONTEND_URL=https://$(oc get route frontend -o jsonpath='{.spec.host}' -n namespace-1)
 ```
 
 <!-- - Deploy backend app
@@ -88,8 +87,8 @@ echo "Backend Internal End URL=> http://$(oc get svc backend  -o jsonpath='{.spe
 ```-->
 
 ### Deploy Backend app (Helm Chart)
-- Deploy backend app using helm chart.
-- Dry run backend chart
+- Deploy backend app using helm chart => [backend-chart](backend-chart)
+- Test with dry run 
 ```bash
 oc project -n namespace-2
 helm install --dry-run test ./backend-chart
@@ -217,10 +216,10 @@ oc delete pvc data -n namespace-2
 oc delete -f artifacts/dummy.yaml -n namespace-2
 ```
 
-## Blue/Green Deployment with OpenShift Route
+## Blue/Green Deployment
 
 ### Frontend
-- deploy frontend-v2 on namespace-1.
+- deploy [frontend-v2](artifacts/frontend-v2.yaml) on namespace-1
 ```bash
 oc apply -f artifacts/frontend-v2.yaml -n namespace-1
 oc expose dc/frontend-v2 -n namespace-1
@@ -244,9 +243,15 @@ scripts/blue-green-deployment.sh
 ```
 - [blue-green-deployment.sh](blue-green-deployment.sh) configure route to point to service frontend-v2
 ```bash
+#Change target service to frontend-v2
 oc patch route frontend  -p '{"spec":{"to":{"name":"'frontend-v2'"}}}' -n namespace-1
-#Switch back to v1
-oc patch route frontend  -p '{"spec":{"to":{"name":"'frontend'"}}}' -n namespace-1
+#Check route configuration
+oc describe route rontend -n namespace-1
+#Sample output
+...
+Service:	frontend
+Weight:		100 (100%)
+Endpoints:	10.130.2.68:8080
 ```
 - Check Result
 ```log
@@ -257,9 +262,13 @@ Frontend version: v2 => [Backend: http://backend.namespace-2.svc.cluster.local:8
 Loop: 5
 Frontend version: v2 => [Backend: http://backend.namespace-2.svc.cluster.local:8080, Response: 200, Body: Backend version:v1, Response:200, Host:backend-1-srrhl, Status:200, Message: Hello, World]
 ```
+- Switch back to v1
+```bash
+oc patch route frontend  -p '{"spec":{"to":{"name":"'frontend'"}}}' -n namespace-1
+```
 
 ### Backend
-- deploy backend-v2 on namespace-2
+- deploy [backend-v2](artifacts/backend-v2.yaml) on namespace-2
 ```bash
 oc apply -f artifacts/backend-v2.yaml -n namespace-2
 ```
@@ -281,6 +290,15 @@ Frontend version: v1 => [Backend: http://backend.namespace-2.svc.cluster.local:8
 oc patch service backend  -p '{"spec":{"selector":{"version":"'v2'"}}}' -n namespace-2
 #Switch back to v1
 oc patch service backend  -p '{"spec":{"selector":{"version":"'v1'"}}}' -n namespace-2
+```
+
+- Switch back to v1
+```bash
+oc patch service backend  -p '{"spec":{"selector":{"version":"'v1'"}}}' -n namespace-2
+```
+- Remove [backend-v2](artifacts/backend-v2.yaml) 
+```bash
+oc delete -f artifacts/backend-v2.yaml -n namespace-2
 ```
 
 ## Horizontal Pod Autoscalers (HPA)
@@ -311,10 +329,52 @@ siege -c 50 https://$(oc get route frontend -o jsonpath='{.spec.host}' -n namesp
 oc describe
 ```
 
-<!-- ### by custom metrics
+<!-- ### by custom metrics -->
 
-#### Setup Prometheus and Grafana (Optional)
-**Remark: Custom Web Portal need to provides list of operators**
+
+
+## East-West Security
+
+### Network Policy
+- Frontend App in namespace namespace-1 accept only request from OpenShift's router in namespace openshift-ingress by apply policy [deny all](artifacts/network-policy-deny-from-all.yaml) and [accept from ingress](artifacts/network-policy-allow-network-policy-global.yaml)
+```bash
+# Consider edit default project template to start with deny all
+oc apply -f artifacts/network-policy-deny-from-all.yaml -n namespace-1
+oc apply -f artifacts/network-policy-allow-network-policy-global.yaml -n namespace-1
+```
+- Backend App in namespace namespace-1 accept only request from namespace-1 and must contains label app=frontend by apply policy [deny all](artifacts/network-policy-deny-from-all.yaml) and [allow ingress from namespace-1](artifacts/network-policy-allow-from-namespace-1.yaml)
+```
+oc apply -f artifacts/network-policy-deny-from-all.yaml -n namespace-2
+oc apply -f artifacts/network-policy-allow-from-namespace-1.yaml -n namespace-2
+```
+
+## North-South Security and control
+
+### Ingress
+- For ingress traffic, IP whitelist can be set to each route.
+```bash
+oc annotate route frontend haproxy.router.openshift.io/ip_whitelist=13.52.0.0/16 -n namespace-1
+```
+- For ingress traffic, set rate limits for http protocol to 5. Each router will limit request for each IP for 5 request/sec (Our environment has 2 routers then total limit is 10 requests)
+```bash
+oc annotate route frontend haproxy.router.openshift.io/rate-limit-connections=true -n namespace-1
+oc annotate route frontend haproxy.router.openshift.io/rate-limit-connections.rate-http=5 -n namespace-1
+```
+- For egress traffic, set [egress firewall](artifacts/egress-namespace-2.yaml) to allow only specific destination. 
+```bash
+oc login --insecure-skip-tls-verify=true --server=$OCP --username=opentlc-mgr
+oc apply -f artifacts/egress-namespace-2.yaml -n namespace-2
+```
+
+## Log & Metrics Monitoring
+
+### Operation and Application Log
+- WIP
+
+### Cluster Metrics and Utilization
+- WIP
+
+### Applications Metrics
 - Create namespace for Prometheus and Grafana
 ```bash
 oc login --insecure-skip-tls-verify=true --server=$OCP --username=opentlc-mgr
@@ -336,7 +396,6 @@ oc apply -f artifacts/prometheus.yaml -n user1-app-monitor
 oc create route edge prometheus --service=prometheus --port=9090 -n user1-app-monitor
 echo "https://$(oc get route prometheus -n user1-app-monitor -o jsonpath='{.spec.host}')"
 ```
-- Check prometheus console for Target and test query
 - Setup Grafana in namespace user1-app-monitor by crete CRD resources
 ```bash
 oc apply -f artifacts/grafana_datasource.yaml -n user1-app-monitor
@@ -344,115 +403,17 @@ oc apply -f artifacts/grafana.yaml -n user1-app-monitor
 oc apply -f artifacts/grafana_dashboard.yaml -n user1-app-monitor
 echo "https://$(oc get route grafana-route -n user1-app-monitor -o jsonpath='{.spec.host}')"
 ```
-- Check backend metrics on Grafana
+- Check Prometheus and Granfana on Developer Console
 
-#### Custom HPA -->
+![prometheus and grafana](images/prometheus-and-grafana-dev-console.png)
 
-## East-West Security
+- Check prometheus console for Target and test query
 
-### Network Policy
-- Frontend App in namespace namespace-1 accept only request from OpenShift's router in namespace openshift-ingress
-```bash
+![prometheus target](images/prometheus-target.png)
 
-# Consider edit default project template to start with deny all
-oc apply -f artifacts/network-policy-deny-from-all.yaml -n namespace-1
-oc apply -f artifacts/network-policy-allow-network-policy-global.yaml -n namespace-1
-```
-- Network Policy for namespace-1
-```yaml
-apiVersion: networking.k8s.io/v1
-kind: NetworkPolicy
-metadata:
-  name: deny-from-all
-spec:
-  podSelector: {}
-  ingress: []
----
-apiVersion: networking.k8s.io/v1
-kind: NetworkPolicy
-metadata:
-  name: allow-network-policy-global
-spec:
-  podSelector: {}
-  ingress:
-    - from:
-        - namespaceSelector:
-            matchLabels:
-              network-policy: global
-  policyTypes:
-    - Ingress
-```
-- Backend App in namespace namespace-1 accept only request from namespace-1 and must contains label app=frontend
-```
-oc apply -f artifacts/network-policy-deny-from-all.yaml -n namespace-2
-oc apply -f artifacts/network-policy-allow-from-namespace-1.yaml -n namespace-2
-```
-- Network Policy for namespace-2
-```yaml
-apiVersion: networking.k8s.io/v1
-kind: NetworkPolicy
-metadata:
-  name: deny-from-all
-spec:
-  podSelector: {}
-  ingress: []
----
-apiVersion: networking.k8s.io/v1
-kind: NetworkPolicy
-metadata:
-  name: allow-from-namespace-1
-spec:
-  podSelector:
-    matchLabels:
-      app: backend
-  ingress:
-    - from:
-        - namespaceSelector:
-            matchLabels:
-              name: namespace-1
-```
+- Grafana Dashboard
 
-## North-South Security and control
-
-### Ingress
-- For ingress traffic, IP whitelist can be set to each route.
-```bash
-oc annotate route frontend haproxy.router.openshift.io/ip_whitelist=13.52.0.0/16 -n namespace-1
-```
-- For ingress traffic, set rate limits for http protocol to 5. Each router will limit request for each IP for 5 request/sec (Our environment has 2 routers then total limit is 10 requests)
-```bash
-oc annotate route frontend haproxy.router.openshift.io/rate-limit-connections=true -n namespace-1
-oc annotate route frontend haproxy.router.openshift.io/rate-limit-connections.rate-http=5 -n namespace-1
-```
-- For egress traffic, set egress firewall to allow only specific destination. 
-```bash
-oc apply -f artifacts/egress-namespace-2.yaml -n namespace-2
-```
-
-### Egress
-- Egress policy to deny all external IP except DNS name httpbin.org
-```yaml
-kind: EgressNetworkPolicy
-apiVersion: v1
-metadata:
-  name: egress-namespace-2
-spec:
-  egress: 
-  - type: Allow
-    to:
-      dnsName: httpbin.org
-  - type: Deny
-    to:
-      cidrSelector: 0.0.0.0/0
-```
-
-## Log & Metrics Monitoring
-
-### Utilization Dashboard
-- 
-
-### ElasticSearch
-- WIP
+![granfana](images/grafana.png)
 
 ## Service Mesh
 
@@ -463,8 +424,9 @@ oc login --insecure-skip-tls-verify=true --server=$OCP --username=opentlc-mgr
 oc new-project user1-istio-system --display-name="Service Mesh Control Plane for user1"
 oc label namespace user1-istio-system network-policy=istio-system
 oc policy add-role-to-user edit user1 -n user1-istio-system
-oc apply -f artifacts/network-poliy-allow-from-istio-system.yaml -n namespace-1
-oc apply -f artifacts/network-poliy-allow-from-istio-system.yaml -n namespace-2
+# operator automatic crate network policy - double check again!
+# oc apply -f artifacts/network-poliy-allow-from-istio-system.yaml -n namespace-1
+# oc apply -f artifacts/network-poliy-allow-from-istio-system.yaml -n namespace-2
 ```
 - Create control plane and join namespace-1 and namespace-2 to control plane
 ```bash
@@ -475,9 +437,7 @@ oc apply -f artifacts/service-mesh-memberroll.yaml -n user1-istio-system
 - Inject sidecar by annotate sidecar.istio.io/inject to deployment config template.
 ```bash
 oc patch dc frontend -p '{"spec":{"template":{"metadata":{"annotations":{"sidecar.istio.io/inject":"true"}}}}}' -n namespace-1
-oc patch dc frontend -p '{"spec":{"template":{"metadata":{"annotations":{"sidecar.istio.io/rewriteAppHTTPProbers":"true"}}}}}' -n namespace-1
 oc patch dc backend -p '{"spec":{"template":{"metadata":{"annotations":{"sidecar.istio.io/inject":"true"}}}}}' -n namespace-2
-oc patch dc backend -p '{"spec":{"template":{"metadata":{"annotations":{"sidecar.istio.io/rewriteAppHTTPProbers":"true"}}}}}' -n namespace-2
 ```
 
 ### Observability with Kiali and Jaeger
@@ -495,13 +455,14 @@ siege -c 5 https://$(oc get route frontend -o jsonpath='{.spec.host}' -n namespa
 
 ### Secure Backend by mTLS
 - Enable mTLS for backend by create destination rule and virtual service.
-**Need to configure annotation  sidecar.istio.io/rewriteAppHTTPProbers: "true"**
 ```bash
+oc patch dc frontend -p '{"spec":{"template":{"metadata":{"annotations":{"sidecar.istio.io/rewriteAppHTTPProbers":"true"}}}}}' -n namespace-1
+oc patch dc backend -p '{"spec":{"template":{"metadata":{"annotations":{"sidecar.istio.io/rewriteAppHTTPProbers":"true"}}}}}' -n namespace-2
 oc apply -f artifacts/backend-destination-rule.yaml -n namespace-2
 oc apply -f artifacts/backend-virtual-service.yaml -n namespace-2
 oc apply -f artifacts/backend-authenticate-mtls.yaml -n namespace-2
 ```
-- Create dummy pod (without sidecar) on namespace-1 
+- Create [dummy pod](artifacts/dummy.yaml) (without sidecar) on namespace-1 
 ```bash
 oc apply -f artifacts/dummy.yaml -n namespace-1
 ```
@@ -514,17 +475,18 @@ curl: (56) Recv failure: Connection reset by peer
 - cURL to frontend's route to verify that route still working properly.
 
 ### Secure frontend by JWT
-- Create destination rule, gateway virtual service for frontend
+- Create [destination rule](artifacts/frontend-destination-rule.yaml), [gateway](artifacts/frontend-gateway.yaml) and [virtual service](artifacts/frontend-virtual-service.yaml) for frontend
 ```bash
 oc apply -f artifacts/frontend-destination-rule.yaml -n namespace-1
 oc apply -f artifacts/frontend-gateway.yaml -n namespace-1
 oc apply -f artifacts/frontend-virtual-service.yaml -n namespace-1
 echo "Istio Gateway URL=> https://$(oc get route istio-ingressgateway -o jsonpath='{.spec.host}' -n user1-istio-system)"
 ```
-- Enable JWT authorization for frontend
+- Enable [JWT authorization](artifacts/frontend-jwt-with-mtls.yaml) for frontend
 ```bash
 oc apply -f artifacts/frontend-jwt-with-mtls.yaml -n namespace-1
 ```
+- Check generated token with [jwt.io](https://jwt.io)
 - Test without JWT token, wrong JWT token and valid JWT token
 ```bash
 curl -v http://$(oc get route istio-ingressgateway -o jsonpath='{.spec.host}' -n user1-istio-system)
@@ -549,7 +511,7 @@ oc delete -f artifacts/egress-namespace-2.yaml -n namespace-2
   | sed 's/mode: ALLOW_ANY/mode: REGISTRY_ONLY/g' \
   | oc replace -n user1-istio-system -f -
 ```
-- Create egerss service entry to allow https request to httpbin.org
+- Create [egerss service entry](artifacts/egress-serviceentry.yml) to allow https request to httpbin.org
 ```bash
 oc apply -f artifacts/egress-serviceentry.yml -n user1-istio-system
 ```
