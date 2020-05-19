@@ -22,6 +22,7 @@
   - [Log & Metrics Monitoring](#log--metrics-monitoring)
     - [Operation and Application Log](#operation-and-application-log)
     - [Cluster Metrics and Utilization](#cluster-metrics-and-utilization)
+      - [Deloper Console](#deloper-console)
     - [Applications Metrics](#applications-metrics)
   - [Service Mesh](#service-mesh)
     - [Control Plane](#control-plane)
@@ -107,6 +108,13 @@ NOTES:
 1. Get the application URL by running these commands:
 http://backend:8080
 ```
+- Check Helm Chart in Developer Console Topology view
+
+![Helm Topology](images/developer-console-helm-topology.png)
+
+- Helm Chart details
+
+![Helm Chart](images/developer-console-helm-chart.png)
 
 ### Verify Installation
 - Check pods on namespace-1 and namespace-2
@@ -372,7 +380,19 @@ oc apply -f artifacts/egress-namespace-2.yaml -n namespace-2
 - WIP
 
 ### Cluster Metrics and Utilization
-- WIP
+
+#### Deloper Console
+- Overall Namespace Utilization
+
+![Namespace Utilization](images/developer-console-namespace-utilization.png)
+
+- Namespace Monitoring
+
+![Namespace Monitoring](images/developer-console-monitoring.png)
+
+- Namespace Events
+
+![Namespace Events](images/developer-console-events.png)
 
 ### Applications Metrics
 - Create namespace for Prometheus and Grafana
