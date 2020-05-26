@@ -521,6 +521,7 @@ oc apply -f artifacts/egress-namespace-2.yaml -n namespace-2
 - WIP
 
 ### Cluster Metrics and Utilization
+- WIP - check for roles to access Monitor
 
 #### Deloper Console
 - Overall Namespace Utilization
