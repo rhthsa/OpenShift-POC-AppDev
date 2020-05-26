@@ -16,8 +16,9 @@
   - [Horizontal Pod Autoscalers (HPA)](#horizontal-pod-autoscalers-hpa)
     - [by CPU](#by-cpu)
     - [by memory](#by-memory)
-  - [East-West Security](#east-west-security)
-    - [Network Policy](#network-policy)
+  - [East-West Security with Network Policy](#east-west-security-with-network-policy)
+    - [Namespace: namespace-1](#namespace-namespace-1)
+    - [Namespace: namespace-2](#namespace-namespace-2)
   - [North-South Security and control](#north-south-security-and-control)
     - [Ingress](#ingress)
   - [Log & Metrics Monitoring](#log--metrics-monitoring)
@@ -425,17 +426,72 @@ oc describe
 
 
 
-## East-West Security
+## East-West Security with Network Policy
 
-### Network Policy
-- Frontend App in namespace namespace-1 accept only request from OpenShift's router in namespace openshift-ingress by apply policy [deny all](artifacts/network-policy-deny-from-all.yaml) and [accept from ingress](artifacts/network-policy-allow-network-policy-global.yaml)
+### Namespace: namespace-1
+
+Frontend App in namespace namespace-1 accept only request from OpenShift's router in namespace openshift-ingress by apply policy [deny all](artifacts/network-policy-deny-from-all.yaml) and [accept from ingress](artifacts/network-policy-allow-network-policy-global.yaml)
+
+- By CLI
 ```bash
 # Consider edit default project template to start with deny all
 oc apply -f artifacts/network-policy-deny-from-all.yaml -n namespace-1
 oc apply -f artifacts/network-policy-allow-network-policy-global.yaml -n namespace-1
 ```
+- By RESTful API
+```bash
+TOKEN=$(oc whoami -t)
+curl --verbose --insecure --location --request POST ${OCP}'/apis/networking.k8s.io/v1/namespaces/namespace-1/networkpolicies' \
+--header 'Accept: application/json' \
+--header 'Content-Type: application/json' \
+--header 'Authorization: Bearer '${TOKEN} \
+--data-raw '{
+    "apiVersion": "networking.k8s.io/v1",
+    "kind": "NetworkPolicy",
+    "metadata": {
+        "name": "deny-from-all"    },
+    "spec": {
+        "podSelector": {},
+        "policyTypes": [
+            "Ingress"
+        ]
+    }
+}'
+curl --verbose --insecure --location --request POST ${OCP}'/apis/networking.k8s.io/v1/namespaces/namespace-1/networkpolicies' \
+--header 'Accept: application/json' \
+--header 'Content-Type: application/json' \
+--header 'Authorization: Bearer '${TOKEN} \
+--data-raw '{
+  "apiVersion": "networking.k8s.io/v1",
+  "kind": "NetworkPolicy",
+  "metadata": {
+    "name": "allow-network-policy-global"
+  },
+  "spec": {
+    "podSelector": {},
+    "ingress": [
+      {
+        "from": [
+          {
+            "namespaceSelector": {
+              "matchLabels": {
+                "network-policy": "global"
+              }
+            }
+          }
+        ]
+      }
+    ],
+    "policyTypes": [
+      "Ingress"
+    ]
+  }
+}'
+```
 
-- Backend App in namespace namespace-1 accept only request from namespace-1 and must contains label app=frontend by apply policy [deny all](artifacts/network-policy-deny-from-all.yaml) and [allow ingress from namespace-1](artifacts/network-policy-allow-from-namespace-1.yaml)
+### Namespace: namespace-2
+
+Backend App in namespace namespace-1 accept only request from namespace-1 and must contains label app=frontend by apply policy [deny all](artifacts/network-policy-deny-from-all.yaml) and [allow ingress from namespace-1](artifacts/network-policy-allow-from-namespace-1.yaml)
 ```
 oc apply -f artifacts/network-policy-deny-from-all.yaml -n namespace-2
 oc apply -f artifacts/network-policy-allow-from-namespace-1.yaml -n namespace-2
