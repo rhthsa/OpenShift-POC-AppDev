@@ -2,11 +2,12 @@
 <!-- TOC -->
 
 - [Container Platform - Demo](#container-platform---demo)
-  - [Create Namespaces](#create-namespaces)
+  - [Create Namespaces, assign users and quotas](#create-namespaces-assign-users-and-quotas)
+    - [RESTful API](#restful-api)
+    - [CLI](#cli)
   - [Deploy Applications](#deploy-applications)
     - [Deploy user2 app](#deploy-user2-app)
     - [Deploy Frontend app](#deploy-frontend-app)
-    - [Deploy Backend app (Helm Chart)](#deploy-backend-app-helm-chart)
     - [Verify Installation](#verify-installation)
   - [Namespace's Quotas](#namespaces-quotas)
   - [Blue/Green Deployment](#bluegreen-deployment)
@@ -35,25 +36,108 @@
 
 ![banner](images/OpenShiftContainerPlatform.png)
 
-## Create Namespaces
-Create namespace for user1 and user2
-- user1 can edit namespace1 and namespace2
-- user2 can edit namespace3
+## Create Namespaces, assign users and quotas
+- Create namespace for user1 and user2
+  - user1 can edit namespace1 and namespace2
+  - user2 can edit namespace3
+- Assign quotas for all namespces
+
+### RESTful API
+- Get Token
+```bash
+TOKEN=$(oc whoami -t)
+```
+- Create namespace namespace-1
+```bash
+curl --verbose --insecure -location --request POST ${OCP}'/api/v1/namespaces' \
+--header 'Accept: application/json' \
+--header 'Content-Type: application/json' \
+--header 'Authorization: Bearer '${TOKEN} \
+--data-raw '{
+    "kind": "Namespace",
+    "apiVersion": "v1",
+    "metadata": {
+        "name": "namespace-1",
+        "labels": {
+            "name": "namespace-1"
+        },
+        "annotations": {
+            "openshift.io/description": "namespace-1",
+            "openshift.io/display-name": "namespace-1",
+            "openshift.io/requester": "opentlc-mgr",
+            "openshift.io/sa.scc.mcs": "s0:c25,c20",
+            "openshift.io/sa.scc.supplemental-groups": "1000640000/10000",
+            "openshift.io/sa.scc.uid-range": "1000640000/10000"
+        }
+    }
+}'
+```
+- Assign user1 with role **edit** to namespace-1 
+```bash
+curl --verbose --insecure --location --request POST ${OCP}'/apis/authorization.openshift.io/v1/namespaces/namespace-1/rolebindings' \
+--header 'Accept: application/json' \
+--header 'Content-Type: application/json' \
+--header 'Authorization: Bearer '${TOKEN} \
+--data-raw '{
+    "apiVersion": "authorization.openshift.io/v1",
+    "kind": "RoleBinding",
+    "metadata": {
+        "name": "user1-edit-namespace-1",
+        "namespace": "namespace-1"
+
+    },
+    "roleRef": {
+        "apiGroup": "rbac.authorization.k8s.io",
+        "kind": "ClusterRole",
+        "name": "edit"
+    },
+    "subjects": [
+        {
+            "apiGroup": "rbac.authorization.k8s.io",
+            "kind": "User",
+            "name": "user1"
+        }
+    ]
+}'
+```
+- Assign [size S quotas](artifacts/size-s-quotas.yaml) to namespace-1
+```bash
+curl --verbose --insecure --location --request POST ${OCP}'/api/v1/namespaces/namespace-1/resourcequotas' \
+--header 'Accept: application/json' \
+--header 'Content-Type: application/json' \
+--header 'Authorization: Bearer '${TOKEN} \
+--data-raw '{
+  "apiVersion": "v1",
+  "kind": "ResourceQuota",
+  "metadata": {
+    "name": "size-s-quotas"
+  },
+  "spec": {
+    "hard": {
+      "pods": "15",
+      "requests.cpu": "1",
+      "requests.memory": "1Gi",
+      "limits.cpu": "4",
+      "limits.memory": "4Gi",
+      "requests.storage": "3Gi"
+    }
+  }
+}'
+```
+
+### CLI
+- Create namespace-2 for user1 and namespace-3 for user2
 ```bash
 oc login --insecure-skip-tls-verify=true --server=$OCP --username=opentlc-mgr
-oc new-project namespace-1 --display-name="Namespace 1"
-oc label namespace namespace-1 name=namespace-1
 oc new-project namespace-2 --display-name="Namespace 2"
 oc label namespace namespace-2 name=namespace-2
 oc new-project namespace-3 --display-name="Namespace 3"
 oc label namespace namespace-3 name=namespace-3
-oc policy add-role-to-user edit user1 -n namespace-1 
 oc policy add-role-to-user edit user1 -n namespace-2
 oc policy add-role-to-user edit user2 -n namespace-3
 ```
-- Assign [size S quotas](artifacts/size-s-quotas.yaml) to namespace-1, namespace-2 and namespace-3
+- Assign [size S quotas](artifacts/size-s-quotas.yaml) to namespace-2 and namespace-3
 ```bash
-oc apply -f artifacts/size-s-quotas.yaml -n namespace-1
 oc apply -f artifacts/size-s-quotas.yaml -n namespace-2
 oc apply -f artifacts/size-s-quotas.yaml -n namespace-3
 ```
@@ -110,7 +194,7 @@ http://backend:8080
 ```
 - Check Helm Chart in Developer Console Topology view
 
-![Helm Topology](images/developer-console-helm-topology.png)
+![Helm Topology](images/developer-console-helm-topology.png )
 
 - Helm Chart details
 
@@ -350,6 +434,7 @@ oc describe
 oc apply -f artifacts/network-policy-deny-from-all.yaml -n namespace-1
 oc apply -f artifacts/network-policy-allow-network-policy-global.yaml -n namespace-1
 ```
+
 - Backend App in namespace namespace-1 accept only request from namespace-1 and must contains label app=frontend by apply policy [deny all](artifacts/network-policy-deny-from-all.yaml) and [allow ingress from namespace-1](artifacts/network-policy-allow-from-namespace-1.yaml)
 ```
 oc apply -f artifacts/network-policy-deny-from-all.yaml -n namespace-2
