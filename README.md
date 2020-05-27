@@ -27,9 +27,9 @@
     - [Ingress Traffic](#ingress-traffic)
     - [Egress Traffic](#egress-traffic)
   - [Log & Metrics and Monitoring](#log--metrics-and-monitoring)
-    - [Deloper Console](#deloper-console)
+    - [Developer Console](#developer-console)
+    - [Monitoring Dashboard](#monitoring-dashboard)
     - [Operation and Application Log](#operation-and-application-log)
-    - [Cluster Metrics and Utilization](#cluster-metrics-and-utilization)
     - [Applications Metrics](#applications-metrics)
   - [Service Mesh](#service-mesh)
     - [Control Plane](#control-plane)
@@ -721,7 +721,10 @@ oc delete egressnetworkpolicy/egress-namespace-2 -n namespace-2
 
 ## Log & Metrics and Monitoring
 
-### Deloper Console
+### Developer Console
+
+Users can use developer console to monitor metrics data from Prometheus, view graph with builtin Grafana and Events with alert manager.
+
 - Overall Namespace Utilization
 
 ![Namespace Utilization](images/developer-console-namespace-utilization.png)
@@ -730,15 +733,23 @@ oc delete egressnetworkpolicy/egress-namespace-2 -n namespace-2
 
 ![Namespace Monitoring](images/developer-console-monitoring.png)
 
+- Metrics Data
+
+![Metriics](images/developer-console-metrics.png)
+
 - Namespace Events
 
 ![Namespace Events](images/developer-console-events.png)
 
+### Monitoring Dashboard
+
+Monitoring dashboard for Administrator and Operator
+
+
 ### Operation and Application Log
 - WIP
 
-### Cluster Metrics and Utilization
-- WIP - check for roles to access Monitor
+
 
 
 
@@ -791,7 +802,8 @@ echo "https://$(oc get route grafana-route -n user1-app-monitor -o jsonpath='{.s
 ```bash
 oc login --insecure-skip-tls-verify=true --server=$OCP --username=opentlc-mgr
 oc new-project user1-istio-system --display-name="Service Mesh Control Plane for user1"
-oc label namespace user1-istio-system network-policy=istio-system
+
+# oc label namespace user1-istio-system network-policy=istio-system
 oc policy add-role-to-user edit user1 -n user1-istio-system
 
 # operator automatic crate network policy - double check again!
@@ -800,18 +812,39 @@ oc policy add-role-to-user edit user1 -n user1-istio-system
 
 # oc apply -f artifacts/network-poliy-allow-from-istio-system.yaml -n namespace-2
 ```
+- Use cluster admin user to install following operators
+  - ElasticSearch
+  - Jaeger
+  - Kibana
+  - OpenShift Service Mesh
 - Create control plane and join namespace-1 and namespace-2 to control plane
 ```bash
 oc login --insecure-skip-tls-verify=true --server=$OCP --username=user1
 oc apply -f artifacts/service-mesh-basic-install.yaml -n user1-istio-system
+oc project user1-istio-system
+watch oc get pods
 oc apply -f artifacts/service-mesh-memberroll.yaml -n user1-istio-system
+```
+- Check network policy for namespace-1
+```bash
+oc get networkpolicy -n namespace-1
+
+# Output
+NAME                     POD-SELECTOR                   AGE
+allow-from-namespace-1   app=backend                    6h19m
+istio-expose-route       maistra.io/expose-route=true   18s
+istio-mesh               <none>                         18s
 ```
 - Inject sidecar by annotate sidecar.istio.io/inject to deployment config template.
 ```bash
 oc patch dc frontend -p '{"spec":{"template":{"metadata":{"annotations":{"sidecar.istio.io/inject":"true"}}}}}' -n namespace-1
 oc patch dc backend -p '{"spec":{"template":{"metadata":{"annotations":{"sidecar.istio.io/inject":"true"}}}}}' -n namespace-2
 ```
-
+- Check that sidecar is injected to pod
+```
+oc get pods -n namespace-1
+oc get pods -n namespace-2
+```
 ### Observability with Kiali and Jaeger
 - Run load test tool
 ```bash
@@ -840,10 +873,16 @@ oc apply -f artifacts/dummy.yaml -n namespace-1
 ```
 - Connect ot dummy pod terminal and cURL to backend service
 ```bash
-sh-4.4$ curl http://backend.namespace-2.svc.cluster.local:8080
+oc exec $(oc get pods -n namespace-1 | grep dummy | grep Running | head -n 1 | awk '{print $1}') -n namespace-1 -- curl http://backend.namespace-2.svc.cluster.local:8080
+```
+- Following error will be displayed
+```bash
 curl: (56) Recv failure: Connection reset by peer
 ```
 - Connect to frontend pod terminal and cURL to backend service.
+```bash
+oc exec -c frontend $(oc get pods -n namespace-1 | grep frontend | grep Running | head -n 1 | awk '{print $1}') -n namespace-1 -- curl http://backend.namespace-2.svc.cluster.local:8080
+```
 - cURL to frontend's route to verify that route still working properly.
 
 ### Secure frontend by JWT
@@ -877,11 +916,11 @@ curl -v -H "Authorization: Bearer $(cat artifacts/token.txt)" http://$(oc get ro
 ```
 
 ### Service Mesh Egress Policy
-- Remove egress firewall
+<!-- - Remove egress firewall
 ```bash
 oc login --insecure-skip-tls-verify=true --server=$OCP --username=opentlc-mgr
 oc delete -f artifacts/egress-namespace-2.yaml -n namespace-2
-```
+``` -->
 - Set control plane configuration to disallow egress traffic by default
 ```bash
  oc get configmap istio -n user1-istio-system -o yaml \
