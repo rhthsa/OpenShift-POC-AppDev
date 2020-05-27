@@ -10,9 +10,13 @@
     - [Deploy Frontend app](#deploy-frontend-app)
     - [Verify Installation](#verify-installation)
   - [Namespace's Quotas](#namespaces-quotas)
-  - [Blue/Green Deployment](#bluegreen-deployment)
+  - [Blue/Green and Canary Deployment](#bluegreen-and-canary-deployment)
     - [Frontend](#frontend)
+      - [Blue/Green deployment](#bluegreen-deployment)
+      - [Canary deployment](#canary-deployment)
     - [Backend](#backend)
+      - [Blue/Green deployment](#bluegreen-deployment-1)
+      - [Canary deployment](#canary-deployment-1)
   - [Horizontal Pod Autoscalers (HPA)](#horizontal-pod-autoscalers-hpa)
     - [by CPU](#by-cpu)
     - [by memory](#by-memory)
@@ -20,11 +24,12 @@
     - [Namespace: namespace-1](#namespace-namespace-1)
     - [Namespace: namespace-2](#namespace-namespace-2)
   - [North-South Security and control](#north-south-security-and-control)
-    - [Ingress](#ingress)
-  - [Log & Metrics Monitoring](#log--metrics-monitoring)
+    - [Ingress Traffic](#ingress-traffic)
+    - [Egress Traffic](#egress-traffic)
+  - [Log & Metrics and Monitoring](#log--metrics-and-monitoring)
+    - [Deloper Console](#deloper-console)
     - [Operation and Application Log](#operation-and-application-log)
     - [Cluster Metrics and Utilization](#cluster-metrics-and-utilization)
-      - [Deloper Console](#deloper-console)
     - [Applications Metrics](#applications-metrics)
   - [Service Mesh](#service-mesh)
     - [Control Plane](#control-plane)
@@ -48,30 +53,29 @@
 ```bash
 TOKEN=$(oc whoami -t)
 ```
-- Create namespace namespace-1
+- Create project namespace-1
 ```bash
-curl --verbose --insecure -location --request POST ${OCP}'/api/v1/namespaces' \
+curl --verbose --insecure -location --request POST ${OCP}'/apis/project.openshift.io/v1/projectrequests' \
 --header 'Accept: application/json' \
 --header 'Content-Type: application/json' \
 --header 'Authorization: Bearer '${TOKEN} \
 --data-raw '{
-    "kind": "Namespace",
-    "apiVersion": "v1",
+    "kind": "ProjectRequest",
+    "apiVersion": "project.openshift.io/v1",
     "metadata": {
         "name": "namespace-1",
-        "labels": {
-            "name": "namespace-1"
-        },
-        "annotations": {
-            "openshift.io/description": "namespace-1",
-            "openshift.io/display-name": "namespace-1",
-            "openshift.io/requester": "opentlc-mgr",
-            "openshift.io/sa.scc.mcs": "s0:c25,c20",
-            "openshift.io/sa.scc.supplemental-groups": "1000640000/10000",
-            "openshift.io/sa.scc.uid-range": "1000640000/10000"
-        }
-    }
+        "creationTimestamp": null
+    },
+    "displayName": "Namespace 1"
 }'
+```
+- Label project namespace-1
+```bash
+curl --verbose --insecure --location --request PATCH ${OCP}'/api/v1/namespaces/namespace-1' \
+--header 'Accept: application/json' \
+--header 'Content-Type: application/merge-patch+json' \
+--header 'Authorization: Bearer '${TOKEN} \
+--data '{"metadata":{"labels":{"name":"namespace-1"}}}'
 ```
 - Assign user1 with role **edit** to namespace-1 
 ```bash
@@ -111,7 +115,8 @@ curl --verbose --insecure --location --request POST ${OCP}'/api/v1/namespaces/na
   "apiVersion": "v1",
   "kind": "ResourceQuota",
   "metadata": {
-    "name": "size-s-quotas"
+    "name": "size-s-quotas",
+    "namespace": "namespace-1"
   },
   "spec": {
     "hard": {
@@ -160,6 +165,8 @@ oc login --insecure-skip-tls-verify=true --server=$OCP --username=user1
 oc apply -f artifacts/frontend.yaml -n namespace-1
 oc apply -f artifacts/frontend-service.yaml -n namespace-1
 oc create route edge frontend --service=frontend --port=8080 -n namespace-1
+oc project namespace-1
+watch oc get pods
 echo "Front End URL=> https://$(oc get route frontend -o jsonpath='{.spec.host}' -n namespace-1)"
 export FRONTEND_URL=https://$(oc get route frontend -o jsonpath='{.spec.host}' -n namespace-1)
 ```
@@ -181,6 +188,7 @@ helm install --dry-run test ./backend-chart
 ```
 - Install chart
 ```bash
+oc project -n namespace-2
 helm install backend-v1 ./backend-chart
 #Sample Output
 NAME: backend-v1
@@ -250,6 +258,7 @@ oc scale dc/backend --replicas=8 -n namespace-2
 )
 - Apply [size M](artifacts/size-m-quotas.yaml) 
 ```bash
+oc login --insecure-skip-tls-verify=true --server=$OCP --username=opentlc-mgr
 oc apply -f artifacts/size-m-quotas.yaml -n namespace-2
 oc delete -f artifacts/size-s-quotas.yaml -n namespace-2
 ```
@@ -288,6 +297,23 @@ oc get pvc -n namespace-2
 NAME   STATUS   VOLUME                                     CAPACITY   ACCESS MODES   STORAGECLASS   AGE
 data   Bound    pvc-08d07d60-b240-4b6d-94b1-a2d5df1b9203   2Gi        RWO            gp2            7m17s
 ```
+- Check mounted file system pod
+```bash
+oc exec $(oc get pods -n namespace-2 | grep backend | grep Running | head -n 1 | awk '{print $1}') -- df -m
+#Sample Output
+Filesystem                           1M-blocks  Used Available Use% Mounted on
+overlay                                 122341 15081    107261  13% /
+tmpfs                                       64     0        64   0% /dev
+tmpfs                                    31474     0     31474   0% /sys/fs/cgroup
+shm                                         64     1        64   1% /dev/shm
+tmpfs                                    31474     6     31468   1% /etc/passwd
+/dev/nvme2n1                              1952     6      1930   1% /data
+/dev/mapper/coreos-luks-root-nocrypt    122341 15081    107261  13% /etc/hosts
+tmpfs                                    31474     1     31474   1% /run/secrets/kubernetes.io/serviceaccount
+tmpfs                                    31474     0     31474   0% /proc/acpi
+tmpfs                                    31474     0     31474   0% /proc/scsi
+tmpfs                                    31474     0     31474   0% /sys/firmware
+```
 - Check Web Console for namespace-2 resource quotas.
 
 ![namespace-2 storage quotas](images/namespace-2-storage-quotas.png)
@@ -309,13 +335,17 @@ oc delete pvc data -n namespace-2
 oc delete -f artifacts/dummy.yaml -n namespace-2
 ```
 
-## Blue/Green Deployment
+## Blue/Green and Canary Deployment
 
 ### Frontend
+
+#### Blue/Green deployment
 - deploy [frontend-v2](artifacts/frontend-v2.yaml) on namespace-1
 ```bash
 oc apply -f artifacts/frontend-v2.yaml -n namespace-1
 oc expose dc/frontend-v2 -n namespace-1
+oc project namespace-1
+watch oc get pods
 ```
 - Run test script to frontend route
 ```bash
@@ -360,7 +390,59 @@ Frontend version: v2 => [Backend: http://backend.namespace-2.svc.cluster.local:8
 oc patch route frontend  -p '{"spec":{"to":{"name":"'frontend'"}}}' -n namespace-1
 ```
 
+#### Canary deployment
+- Canary deployment with 80% of request to v1 and 20% to v2 with [frontend-route-canary-80-20.yaml](artifacts/frontend-route-canary-80-20.yaml)
+```bash
+oc apply -f artifacts/frontend-route-canary-80-20.yaml -n namespace-1
+```
+- Test canary deployment with [frontend-loop-10.sh](scripts/loop-frontend-10.sh)
+```bash
+scripts/loop-frontend-10.sh
+#Output
+Frontend: v1
+Frontend: v1
+Frontend: v1
+Frontend: v1
+Frontend: v2
+Frontend: v1
+Frontend: v1
+Frontend: v1
+Frontend: v1
+Frontend: v2
+========================================================
+Version v1: 8
+Version v2: 2
+========================================================
+```
+- Adjust weight to 70/30 with [frontend-route-canary-70-30.yaml](artifacts/frontend-route-canary-70-30.yaml)
+```bash
+oc apply -f artifacts/frontend-route-canary-70-30.yaml -n namespace-1
+#Output
+Frontend: v1
+Frontend: v1
+Frontend: v1
+Frontend: v2
+Frontend: v1
+Frontend: v1
+Frontend: v2
+Frontend: v1
+Frontend: v1
+Frontend: v2
+========================================================
+Version v1: 7
+Version v2: 3
+========================================================
+```
+- Remove frontend-v2 and configure route to v1 only
+```bash
+oc apply -f artifacts/frontend-route.yaml -n namespace-1
+oc delete dc/frontend-v2;oc delete svc/frontend-v2
+```
+
 ### Backend
+
+#### Blue/Green deployment
+
 - deploy [backend-v2](artifacts/backend-v2.yaml) on namespace-2
 ```bash
 oc apply -f artifacts/backend-v2.yaml -n namespace-2
@@ -381,10 +463,8 @@ Frontend version: v1 => [Backend: http://backend.namespace-2.svc.cluster.local:8
 - Blue/Green deployment for backend by configure backend service selector to select label version v2
 ```bash
 oc patch service backend  -p '{"spec":{"selector":{"version":"'v2'"}}}' -n namespace-2
-#Switch back to v1
-oc patch service backend  -p '{"spec":{"selector":{"version":"'v1'"}}}' -n namespace-2
 ```
-
+- Check output on anther terminal that backend is witch to v2
 - Switch back to v1
 ```bash
 oc patch service backend  -p '{"spec":{"selector":{"version":"'v1'"}}}' -n namespace-2
@@ -394,23 +474,28 @@ oc patch service backend  -p '{"spec":{"selector":{"version":"'v1'"}}}' -n names
 oc delete -f artifacts/backend-v2.yaml -n namespace-2
 ```
 
+#### Canary deployment
+Canary deployment for service is supported by Serverless or Service Mesh. Following steps demonstrate for Serverless
+
+
 ## Horizontal Pod Autoscalers (HPA)
 
 ### by CPU
 - Set HPA for frontend app based on CPU utilization.
 ```bash
-oc autoscale dc/frontend --min 1 --max 3 --cpu-percent=7 -n namespace-1
+oc autoscale dc/frontend --min 1 --max 3 --cpu-percent=3 -n namespace-1
 ```
-- Check HPA status and load test
+- Check HPA status and load test to drive CPU workload
 ```bash
 watch oc get hpa -n namespace-1
 #Run load test on another terminal
-siege -c 50 https://$(oc get route frontend -o jsonpath='{.spec.host}' -n namespace-1)
-oc describe PodMetrics frontend-1-9kcjq  -n namespace-1
+siege -c 20 https://$(oc get route frontend -o jsonpath='{.spec.host}' -n namespace-1)
+#Check number of pods on another terminal
+oc describe PodMetrics <pod name>  -n namespace-1
 ```
 
 ### by memory
-- Set HPA for backend based on memory utilization
+- Set HPA for backend based on memory utilization with 60 MB threshold
 ```bash
 oc apply -f artifacts/backend-memory-hpa.yaml -n namespace-2
 ```
@@ -418,10 +503,14 @@ oc apply -f artifacts/backend-memory-hpa.yaml -n namespace-2
 ```bash
 watch oc get hpa -n namespace-2
 #Run load test on another terminal
-siege -c 50 https://$(oc get route frontend -o jsonpath='{.spec.host}' -n namespace-1)
+siege -c 20 https://$(oc get route frontend -o jsonpath='{.spec.host}' -n namespace-1)
 oc describe
 ```
-
+- Clean up HPA configuration
+```bash
+oc delete hpa --all -n namespace-1
+oc delete hpa --all -n namespace-2
+```
 <!-- ### by custom metrics -->
 
 
@@ -432,13 +521,24 @@ oc describe
 
 Frontend App in namespace namespace-1 accept only request from OpenShift's router in namespace openshift-ingress by apply policy [deny all](artifacts/network-policy-deny-from-all.yaml) and [accept from ingress](artifacts/network-policy-allow-network-policy-global.yaml)
 
-- By CLI
+- Default network policy
 ```bash
-# Consider edit default project template to start with deny all
-oc apply -f artifacts/network-policy-deny-from-all.yaml -n namespace-1
-oc apply -f artifacts/network-policy-allow-network-policy-global.yaml -n namespace-1
+oc get networkpolicy -n namespace-1
+#Output
+NAME                           POD-SELECTOR   AGE
+allow-from-all-namespaces      <none>         152m
+allow-from-ingress-namespace   <none>         152m
 ```
-- By RESTful API
+- Remove allow-from-all-namespaces from namespace-1
+```bash
+oc delete networkpolicy/allow-from-ingress-namespace -n namespace-1
+```
+<!-- - Apply network policy to default with [network-policy-deny-from-all.yaml](artifacts/network-policy-deny-from-all.yaml)
+```bash
+oc apply -f artifacts/network-policy-deny-from-all.yaml -n namespace-1
+oc apply -f artifacts/allow-network-policy-global.yaml -n namespace-1
+```
+- Sample of apply network policy by RESTful API
 ```bash
 TOKEN=$(oc whoami -t)
 curl --verbose --insecure --location --request POST ${OCP}'/apis/networking.k8s.io/v1/namespaces/namespace-1/networkpolicies' \
@@ -486,44 +586,142 @@ curl --verbose --insecure --location --request POST ${OCP}'/apis/networking.k8s.
       "Ingress"
     ]
   }
-}'
+}' -->
+- Check network policy on namespace-1
+```bash
+oc get networkpolicy -n namespace-1
+
+# Output
+NAME                          POD-SELECTOR   AGE
+allow-network-policy-global   <none>         8s
+```
+- Check that route still work properly
+```bash
+curl -v $FRONTEND_URL/version
+```
+- Pod in namespace-1 can connect ot service in namespace-1
+```bash
+oc exec $(oc get pods -n namespace-1 | grep Running | head -n 1 | awk '{print $1}') -n namespace-1 -- curl http://frontend.namespace-1.svc.cluster.local:8080/version
+
+# Output
+Frontend version:v1, Response:200, Meessage:check version
+```
+- Pod in namespace-2 cannot connect to pod on namespace-1
+```bash
+oc exec $(oc get pods -n namespace-2 | grep Running | head -n 1 | awk '{print $1}') -n namespace-2 -- curl http://frontend.namespace-1.svc.cluster.local:8080/version
+
+# Output
+Connection timed out command terminated with exit code 7
 ```
 
 ### Namespace: namespace-2
 
-Backend App in namespace namespace-1 accept only request from namespace-1 and must contains label app=frontend by apply policy [deny all](artifacts/network-policy-deny-from-all.yaml) and [allow ingress from namespace-1](artifacts/network-policy-allow-from-namespace-1.yaml)
-```
-oc apply -f artifacts/network-policy-deny-from-all.yaml -n namespace-2
+Backend App in namespace namespace-2 accept only request from namespace-1 and pods must contains label app=frontend remove default allow-from-all-namespaces.
+
+- Configure network policies for namespace-2
+```bash
+oc delete networkpolicy/allow-from-all-namespaces -n namespace-2
 oc apply -f artifacts/network-policy-allow-from-namespace-1.yaml -n namespace-2
+```
+- Check network policy
+```bash
+oc get networkpolicy -n namespace-2
+
+# Output
+NAME                           POD-SELECTOR   AGE
+allow-from-ingress-namespace   <none>         27m
+allow-from-namespace-1         app=backend    5s
+```
+
+- Pod in namespace-1 can connect to pod on namespace-2
+```bash
+oc exec $(oc get pods -n namespace-1 | grep Running | head -n 1 | awk '{print $1}') -n namespace-1 -- curl http://backend.namespace-2.svc.cluster.local:8080/version
+```
+- Check that route still work properly.
+```bash
+curl -v $FRONTEND_URL
+```
+- Expose route for backend service
+```
+oc expose svc/backend -n namespace-2
+BACKEND_URL=http://$(oc get route backend -n namespace-2 -o jsonpath='{.spec.host}')
+curl -v ${BACKEND_URL}/version
+```
+- Project namespace-2 is used for backend service only. Then remove allow-from-ingress-namespace and test backend's route again.
+```bash
+oc delete networkpolicy/allow-from-ingress-namespace -n namespace-2
+curl -v ${BACKEND_URL}/version
+```
+- Delete backend's route
+```bash
+oc delete route/backend -n namespace-2
 ```
 
 ## North-South Security and control
 
-### Ingress
-- For ingress traffic, IP whitelist can be set to each route.
-```bash
-oc annotate route frontend haproxy.router.openshift.io/ip_whitelist=13.52.0.0/16 -n namespace-1
-```
-- For ingress traffic, set rate limits for http protocol to 5. Each router will limit request for each IP for 5 request/sec (Our environment has 2 routers then total limit is 10 requests)
+### Ingress Traffic
+- For ingress traffic, set rate limits for http protocol to 5 for each IP
 ```bash
 oc annotate route frontend haproxy.router.openshift.io/rate-limit-connections=true -n namespace-1
 oc annotate route frontend haproxy.router.openshift.io/rate-limit-connections.rate-http=5 -n namespace-1
 ```
-- For egress traffic, set [egress firewall](artifacts/egress-namespace-2.yaml) to allow only specific destination. 
+- Test with [loop-frontend.sh](scripts/loop-frontend.sh)
+```bash
+...
+Loop: 4
+Frontend version: v1 => [Backend: http://backend.namespace-2.svc.cluster.local:8080, Response: 200, Body: Backend version:v1, Response:200, Host:backend-1-6gzdw, Status:200, Message: Hello, World]
+Loop: 5
+Frontend version: v1 => [Backend: http://backend.namespace-2.svc.cluster.local:8080, Response: 200, Body: Backend version:v1, Response:200, Host:backend-1-6gzdw, Status:200, Message: Hello, World]
+Loop: 6
+curl: (52) Empty reply from server
+...
+```
+- For ingress traffic, IP whitelist can be set to each route.
+```bash
+oc annotate route frontend haproxy.router.openshift.io/ip_whitelist=13.52.0.0/16 -n namespace-1
+```
+- Test with cURL
+```bash
+curl $FRONTEND_URL
+
+# Output
+curl: (52) Empty reply from server
+```
+- Annotate route with test's IP address
+```bash
+oc annotate route frontend haproxy.router.openshift.io/ip_whitelist=$(curl http://ident.me) --overwrite -n namespace-1
+```
+- Test with cURL again and remove IP whitelist
+```bash
+curl $FRONTEND_URL
+oc annotate route frontend haproxy.router.openshift.io/ip_whitelist= --overwrite -n namespace-1
+```
+### Egress Traffic
+- Configure egress filrewall to allow only destination is facebook.com
 ```bash
 oc login --insecure-skip-tls-verify=true --server=$OCP --username=opentlc-mgr
+oc apply -f artifacts/egress-namespace-2-facebook.yaml -n namespace-2
+curl $FRONTEND_URL
+
+# Output
+<html><body><h1>504 Gateway Time-out</h1>
+The server didn't respond in time.
+</body></html>
+```
+- For egress traffic, set [egress firewall](artifacts/egress-namespace-2.yaml) to allow only [httpbin.org](https://httpbin.org)
+```bash
+oc delete egressnetworkpolicy/egress-namespace-2 -n namespace-2
 oc apply -f artifacts/egress-namespace-2.yaml -n namespace-2
+curl $FRONTEND_URL
+```
+- Remove egress 
+```bash
+oc delete egressnetworkpolicy/egress-namespace-2 -n namespace-2
 ```
 
-## Log & Metrics Monitoring
+## Log & Metrics and Monitoring
 
-### Operation and Application Log
-- WIP
-
-### Cluster Metrics and Utilization
-- WIP - check for roles to access Monitor
-
-#### Deloper Console
+### Deloper Console
 - Overall Namespace Utilization
 
 ![Namespace Utilization](images/developer-console-namespace-utilization.png)
@@ -535,6 +733,14 @@ oc apply -f artifacts/egress-namespace-2.yaml -n namespace-2
 - Namespace Events
 
 ![Namespace Events](images/developer-console-events.png)
+
+### Operation and Application Log
+- WIP
+
+### Cluster Metrics and Utilization
+- WIP - check for roles to access Monitor
+
+
 
 ### Applications Metrics
 - Create namespace for Prometheus and Grafana
@@ -549,7 +755,8 @@ oc apply -f artifacts/network-policy-allow-from-app-monitor.yaml -n namespace-2
 ```
 - Setup Promethues in namespace user1-app-monitor by crete CRD resources
 ```bash
-#Service Account steps need cluster admin roles.
+
+# Service Account steps need cluster admin roles.
 oc login --insecure-skip-tls-verify=true --server=$OCP --username=opentlc-mgr
 oc apply -f artifacts/prometheus-service-account.yaml -n user1-app-monitor
 oc login --insecure-skip-tls-verify=true --server=$OCP --username=usr1
@@ -586,8 +793,11 @@ oc login --insecure-skip-tls-verify=true --server=$OCP --username=opentlc-mgr
 oc new-project user1-istio-system --display-name="Service Mesh Control Plane for user1"
 oc label namespace user1-istio-system network-policy=istio-system
 oc policy add-role-to-user edit user1 -n user1-istio-system
+
 # operator automatic crate network policy - double check again!
+
 # oc apply -f artifacts/network-poliy-allow-from-istio-system.yaml -n namespace-1
+
 # oc apply -f artifacts/network-poliy-allow-from-istio-system.yaml -n namespace-2
 ```
 - Create control plane and join namespace-1 and namespace-2 to control plane
@@ -652,13 +862,18 @@ oc apply -f artifacts/frontend-jwt-with-mtls.yaml -n namespace-1
 - Test without JWT token, wrong JWT token and valid JWT token
 ```bash
 curl -v http://$(oc get route istio-ingressgateway -o jsonpath='{.spec.host}' -n user1-istio-system)
-#401 Unauthorized
-#Origin authentication failed
+
+# Unauthorized
+
+# Origin authentication failed
 curl -v -H "Authorization: Bearer $(cat artifacts/jwt-wrong-realms.txt)" http://$(oc get route istio-ingressgateway -o jsonpath='{.spec.host}' -n user1-istio-system)
-#401 Unauthorized
-#Origin authentication failed
+
+# Unauthorized
+
+# Origin authentication failed
 curl -v -H "Authorization: Bearer $(cat artifacts/token.txt)" http://$(oc get route istio-ingressgateway -o jsonpath='{.spec.host}' -n user1-istio-system)
-#Success
+
+# Success
 ```
 
 ### Service Mesh Egress Policy

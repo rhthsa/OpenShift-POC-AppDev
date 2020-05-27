@@ -56,16 +56,16 @@ spec:
             port: 8080
             scheme: HTTP
           initialDelaySeconds: 3
-          periodSeconds: 5
+          periodSeconds: 60
           successThreshold: 1
         readinessProbe:
-          failureThreshold: 1
+          failureThreshold: 2
           httpGet:
             path: /health/ready
             port: 8080
             scheme: HTTP
           initialDelaySeconds: 2
-          periodSeconds: 3
+          periodSeconds: 50
           successThreshold: 1
           timeoutSeconds: 5
         terminationMessagePath: /dev/termination-log
