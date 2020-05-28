@@ -2,23 +2,32 @@
 <!-- TOC -->
 
 - [Application Deployment](#application-deployment)
-  - [Deploy user2 app](#deploy-user2-app)
   - [Deploy Frontend app](#deploy-frontend-app)
   - [Verify Installation](#verify-installation)
   - [Test Namespace's Quotas](#test-namespaces-quotas)
+  - [Deploy user2 app](#deploy-user2-app)
 
 <!-- /TOC -->
 
 Application Architecture
-**WIP**
 
-## Deploy user2 app
-- Deploy dummy app by deployment config YAML file
-```bash
-oc login --insecure-skip-tls-verify=true --server=$OCP --username=user2
-oc apply -f artifacts/dummy.yaml -n namespace-3
-oc get pods -n namespace-3
+
+```mermaid
+flowchart LR
+    frontend-->backend
+    subgraph namespace-1
+    frontend
+    end
+    subgraph namespace-2
+    backend
+    end
+    backend-->httpbin.org
+    subgraph external system
+    httpbin.org
+    end
 ```
+
+
 
 ## Deploy Frontend app
 - Deploy frontend app with [frontend.yaml](artifacts/frontend.yaml) and [frontend-service.yaml](artifacts/frontend-service.yaml)
@@ -196,4 +205,12 @@ error: failed to patch volume update to pod template: persistentvolumeclaims "da
 oc set volume dc/backend --remove --name=data -n namespace-2
 oc delete pvc data -n namespace-2
 oc delete -f artifacts/dummy.yaml -n namespace-2
+```
+
+## Deploy user2 app
+- Deploy dummy app by deployment config YAML file
+```bash
+oc login --insecure-skip-tls-verify=true --server=$OCP --username=user2
+oc apply -f artifacts/dummy.yaml -n namespace-3
+oc get pods -n namespace-3
 ```

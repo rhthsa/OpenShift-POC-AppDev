@@ -11,6 +11,30 @@
 
 <!-- /TOC -->
 
+
+```mermaid
+flowchart LR
+    id1(requester)-->router
+    subgraph users
+    id1(requester)
+    end
+    router-->frontend
+    subgraph openshift-ingress
+    router
+    end
+    frontend-->backend
+    subgraph namespace-1
+    frontend
+    end
+    subgraph namespace-2
+    backend
+    end
+    backend-->id5(httpbin.org)
+    subgraph external-system
+    id5(httpbin.org)
+    end
+```
+
 ## Network Policy (East-West Security)
 
 ### Project: namespace-1

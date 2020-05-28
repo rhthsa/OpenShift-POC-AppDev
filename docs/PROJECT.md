@@ -13,6 +13,21 @@
   - user2 can edit namespace3
 - Assign quotas for all namespces
 
+```mermaid
+flowchart LR
+    frontend-->backend
+    subgraph namespace-1
+    frontend
+    end
+    subgraph namespace-2
+    backend
+    end
+    backend-->httpbin.org
+    subgraph external system
+    httpbin.org
+    end
+```
+
 ## RESTful APIs
 - Get Token
 ```bash
