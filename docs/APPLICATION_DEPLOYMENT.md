@@ -13,7 +13,7 @@ Application Architecture
 
 
 ```mermaid
-graph TB
+graph LR
 
     frontend-->backend
     subgraph namespace-1
