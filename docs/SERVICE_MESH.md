@@ -10,6 +10,39 @@
   - [Cleanup Istio](#cleanup-istio)
 
 <!-- /TOC -->
+```mermaid
+graph LR
+    requester-->router
+    subgraph users
+    requester
+    end
+    
+    router-->istio-ingress
+    subgraph openshift-ingress
+    router
+    end
+
+    istio-egress-->httpbin.org
+    subgraph user1-istio-system
+    istio-ingress
+    istio-egress
+    end
+    
+    istio-ingress-->frontend
+    frontend-->backend
+    subgraph namespace-1
+    frontend
+    end
+
+    backend-->istio-egress
+    subgraph namespace-2
+    backend
+    end
+
+    subgraph "external system"
+    httpbin.org
+    end
+```
 
 ## Control Plane
 - Create namespace for control plane
