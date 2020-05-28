@@ -22,14 +22,14 @@ graph LR
     router
     end
 
-    istio-egress-->httpbin.org
+    istio-egress-- whitelist -->httpbin.org
     subgraph user1-istio-system
     istio-ingress
     istio-egress
     end
     
-    istio-ingress-->frontend
-    frontend-->backend
+    istio-ingress-- JWT -->frontend
+    frontend-- mTLS -->backend
     subgraph namespace-1
     frontend
     end

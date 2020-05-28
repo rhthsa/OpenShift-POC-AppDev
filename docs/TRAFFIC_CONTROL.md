@@ -14,22 +14,22 @@
 
 ```mermaid
 graph LR
-    id1(requester)-->router
+    id1(requester)-- Annotate Route -->router
     subgraph users
     id1(requester)
     end
-    router-->frontend
+    router-- Network Policy -->frontend
     subgraph openshift-ingress
     router
     end
-    frontend-->backend
+    frontend-- Network Policy -->backend
     subgraph namespace-1
     frontend
     end
     subgraph namespace-2
     backend
     end
-    backend-->id5(httpbin.org)
+    backend-- Egress Gateway -->id5(httpbin.org)
     subgraph external-system
     id5(httpbin.org)
     end
