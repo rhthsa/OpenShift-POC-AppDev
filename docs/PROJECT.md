@@ -15,7 +15,7 @@
 
 ```mermaid
 
-flowchart LR
+flowchart TB
 
     frontend-->backend
     subgraph namespace-1
@@ -27,7 +27,7 @@ flowchart LR
     backend-->httpbin.org
     subgraph "external system"
     httpbin.org
-    end
+end
     
 ```
 

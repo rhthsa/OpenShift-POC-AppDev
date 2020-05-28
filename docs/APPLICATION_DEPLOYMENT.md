@@ -14,7 +14,7 @@ Application Architecture
 
 ```mermaid
 
-flowchart LR
+flowchart TB
 
     frontend-->backend
     subgraph namespace-1
