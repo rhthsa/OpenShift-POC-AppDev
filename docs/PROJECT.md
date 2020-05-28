@@ -9,8 +9,8 @@
 
 
 Create namespace for user1 and user2
-- user1 can edit namespace1 and namespace2
-- user2 can edit namespace3
+- user1 can edit namespace-1 and namespace-2
+- user2 can edit namespace-3
 - Assign quotas for all namespces
 
 ```mermaid
