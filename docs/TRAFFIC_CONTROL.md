@@ -33,6 +33,12 @@ graph LR
     subgraph external-system
     id5(httpbin.org)
     end
+
+    dummy-- Network Policy -->frontend
+    dummy-- Network Policy -->backend
+    subgraph namespace-3
+    dummy
+    end
 ```
 
 ## Network Policy (East-West Security)
