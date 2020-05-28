@@ -13,6 +13,7 @@ Application Architecture
 
 
 ```mermaid
+
 flowchart LR
     frontend-->backend
     subgraph namespace-1
@@ -25,6 +26,7 @@ flowchart LR
     subgraph external system
     httpbin.org
     end
+    
 ```
 
 

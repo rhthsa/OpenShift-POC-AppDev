@@ -14,6 +14,7 @@
 - Assign quotas for all namespces
 
 ```mermaid
+
 flowchart LR
     frontend-->backend
     subgraph namespace-1
@@ -26,6 +27,7 @@ flowchart LR
     subgraph external system
     httpbin.org
     end
+    
 ```
 
 ## RESTful APIs
