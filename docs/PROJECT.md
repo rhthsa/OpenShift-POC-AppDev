@@ -15,7 +15,7 @@
 
 ```mermaid
 
-flowchart TB
+graph TB
 
     frontend-->backend
     subgraph namespace-1
