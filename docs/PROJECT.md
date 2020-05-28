@@ -8,27 +8,24 @@
 <!-- /TOC -->
 
 
-- Create namespace for user1 and user2
-  - user1 can edit namespace1 and namespace2
-  - user2 can edit namespace3
+Create namespace for user1 and user2
+- user1 can edit namespace1 and namespace2
+- user2 can edit namespace3
 - Assign quotas for all namespces
 
 ```mermaid
 
 graph LR
 
-    frontend-->backend
-    subgraph namespace-1
-    frontend
+    subgraph user2
+    namespace-3
     end
-    subgraph namespace-2
-    backend
-    end
-    backend-->httpbin.org
-    subgraph "external system"
-    httpbin.org
-end
     
+    subgraph user1
+    namespace-1
+    namespace-2
+    end
+
 ```
 
 ## RESTful APIs
