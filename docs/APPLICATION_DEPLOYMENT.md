@@ -3,7 +3,9 @@
 
 - [Application Deployment](#application-deployment)
   - [Deploy Frontend app](#deploy-frontend-app)
+  - [Deploy Application from Catalog](#deploy-application-from-catalog)
   - [Verify Installation](#verify-installation)
+    - [Developer Console](#developer-console)
   - [Test Namespace's Quotas](#test-namespaces-quotas)
   - [Deploy user2 app](#deploy-user2-app)
 
@@ -61,11 +63,10 @@ helm install --dry-run test ./backend-chart
 ```
 - Install chart
 ```bash
-oc project -n namespace-2
-helm install backend-v1 ./backend-chart
+helm install backend --namespace=namespace-2 ./backend-chart
 #Sample Output
-NAME: backend-v1
-LAST DEPLOYED: Mon May 18 10:33:26 2020
+NAME: backend
+LAST DEPLOYED: Fri May 29 12:09:40 2020
 NAMESPACE: namespace-2
 STATUS: deployed
 REVISION: 1
@@ -82,6 +83,10 @@ http://backend:8080
 
 ![Helm Chart](images/developer-console-helm-chart.png)
 
+## Deploy Application from Catalog
+- user2 deploy PostgreSQL from catalog
+
+
 ## Verify Installation
 - Check pods on namespace-1 and namespace-2
 ```bash
@@ -97,11 +102,32 @@ backend-1-deploy   0/1     Completed   0          5s
 backend-1-pdkf9    1/1     Running     0          8s
 ```
 
+### Developer Console
+Tenant (Namespace)'s member and Tenant's owner can monitor their own tenant by
+
 - Check Develor Console for applications's configuration
 
 ![frontend app](images/frontend-app.png)
 
 ![backend app](images/backend-app.png)
+
+- Monitor pod utilization
+
+![pod utilization](images/pod-utilization.png)
+
+- Monitor namespace utilization
+
+![overall project utilization](images/project-utilization.png)
+
+Detail utilization
+
+![developer console monitors](images/dev-console-monitor.png)
+
+- Pod's log
+
+![pod's log](images/pod-log-1.png)
+
+
   
 ## Test Namespace's Quotas
 - Check Namespace's quotas on Project Details on Web Developer Console
