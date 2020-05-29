@@ -13,10 +13,6 @@
 ```mermaid
 graph LR
     requester-->router
-    subgraph users
-    requester
-    end
-    
     router-->istio-ingress
     subgraph openshift-ingress
     router
