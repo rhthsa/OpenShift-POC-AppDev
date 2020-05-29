@@ -35,7 +35,20 @@ Monitoring dashboard for Administrator and Operator
 
 
 ## Operation and Application Log
-- WIP
+
+OpenShift builtin with EFK stack. Kibana will use RBAC from OpenShift then each user will access only their namespace.
+
+- Login to Kibana with user1
+
+![log](images/kibana-rbac.png)
+
+- Overall log
+
+![log](images/kibana-elasticsearch-log.png)
+
+- Login to Kibana with Cluster Admin to check operator
+
+![log](images/kibana-operator.png)
 
 ## Applications Metrics
 - Create namespace for Prometheus and Grafana
