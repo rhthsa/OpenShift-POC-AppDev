@@ -49,27 +49,26 @@ spec:
         env:
           - name: BACKEND_URL
             value: http://backend.namespace-2.svc.cluster.local:8080
-        livenessProbe:
-          failureThreshold: 2
-          httpGet:
-            path: /status
-            port: 8080
-            scheme: HTTP
-          initialDelaySeconds: 5
-          periodSeconds: 5
-          successThreshold: 1
-          timeoutSeconds: 1
-        readinessProbe:
-          failureThreshold: 1
-          httpGet:
-            path: /status
-            port: 8080
-            scheme: HTTP
-          initialDelaySeconds: 7
-          periodSeconds: 5
-          successThreshold: 1
-          timeoutSeconds: 1
-        
+        # livenessProbe:
+        #   failureThreshold: 2
+        #   httpGet:
+        #     path: /status
+        #     port: 8080
+        #     scheme: HTTP
+        #   initialDelaySeconds: 5
+        #   periodSeconds: 5
+        #   successThreshold: 1
+        #   timeoutSeconds: 1
+        # readinessProbe:
+        #   failureThreshold: 1
+        #   httpGet:
+        #     path: /status
+        #     port: 8080
+        #     scheme: HTTP
+        #   initialDelaySeconds: 7
+        #   periodSeconds: 5
+        #   successThreshold: 1
+        #   timeoutSeconds: 1
         terminationMessagePath: /dev/termination-log
         terminationMessagePolicy: File
       dnsPolicy: ClusterFirst
