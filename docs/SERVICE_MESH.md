@@ -67,7 +67,6 @@ oc apply -f artifacts/service-mesh-memberroll.yaml -n user1-istio-system
 - Check network policy for namespace-1
 ```bash
 oc get networkpolicy -n namespace-1
-
 # Output
 NAME                     POD-SELECTOR                   AGE
 allow-from-namespace-1   app=backend                    6h19m
