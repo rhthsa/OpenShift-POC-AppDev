@@ -33,6 +33,14 @@ Users can use developer console to monitor metrics data from Prometheus, view gr
 
 Monitoring dashboard for Administrator and Operator
 
+- Compute resources by Cluster
+
+![cluster](images/grafana-cluster.png)
+
+
+- Compute resources by Node
+
+![node](images/grafana-node.png)
 
 ## Operation and Application Log
 
