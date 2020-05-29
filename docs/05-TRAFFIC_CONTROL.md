@@ -14,10 +14,8 @@
 
 ```mermaid
 graph LR
+
     id1(requester)-- Annotate Route -->router
-    subgraph users
-    id1(requester)
-    end
     router-- Network Policy -->frontend
     subgraph openshift-ingress
     router
