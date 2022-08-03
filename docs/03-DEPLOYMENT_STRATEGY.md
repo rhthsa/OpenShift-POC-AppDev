@@ -9,7 +9,7 @@
 <!-- /TOC -->
 
 ## Blue/Green deployment with OpenShift's Route
-- deploy [frontend-v2](artifacts/frontend-v2.yaml) on namespace-1
+- deploy [frontend-v2](../artifacts/frontend-v2.yaml) on namespace-1
 ```bash
 oc apply -f artifacts/frontend-v2.yaml -n namespace-1
 oc expose dc/frontend-v2 -n namespace-1
@@ -68,7 +68,7 @@ oc patch route frontend  -p '{"spec":{"to":{"name":"'frontend'"}}}' -n namespace
 ```
 
 ## Canary deployment with OpenShift's Route
-- Canary deployment with 80% of request to v1 and 20% to v2 with [frontend-route-canary-80-20.yaml](artifacts/frontend-route-canary-80-20.yaml)
+- Canary deployment with 80% of request to v1 and 20% to v2 with [frontend-route-canary-80-20.yaml](../artifacts/frontend-route-canary-80-20.yaml)
 ```bash
 oc apply -f artifacts/frontend-route-canary-80-20.yaml -n namespace-1
 ```
@@ -91,7 +91,7 @@ Version v1: 8
 Version v2: 2
 ========================================================
 ```
-- Adjust weight to 70/30 with [frontend-route-canary-70-30.yaml](artifacts/frontend-route-canary-70-30.yaml)
+- Adjust weight to 70/30 with [frontend-route-canary-70-30.yaml](../artifacts/frontend-route-canary-70-30.yaml)
 ```bash
 oc apply -f artifacts/frontend-route-canary-70-30.yaml -n namespace-1
 #Output
@@ -118,7 +118,7 @@ oc delete dc/frontend-v2;oc delete svc/frontend-v2
 
 ## Blue/Green deployment with Service
 
-- deploy [backend-v2](artifacts/backend-v2.yaml) on namespace-2
+- deploy [backend-v2](../artifacts/backend-v2.yaml) on namespace-2
 ```bash
 oc apply -f artifacts/backend-v2.yaml -n namespace-2
 ```
@@ -144,7 +144,7 @@ oc patch service backend  -p '{"spec":{"selector":{"version":"'v2'"}}}' -n names
 ```bash
 oc patch service backend  -p '{"spec":{"selector":{"version":"'v1'"}}}' -n namespace-2
 ```
-- Remove [backend-v2](artifacts/backend-v2.yaml) 
+- Remove [backend-v2](../artifacts/backend-v2.yaml) 
 ```bash
 oc delete -f artifacts/backend-v2.yaml -n namespace-2
 ```
