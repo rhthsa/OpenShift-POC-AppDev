@@ -155,7 +155,7 @@ oc scale dc/backend --replicas=8 -n namespace-2
 
 ![quota exceeded alert](images/quota-exceeded-alert.png)
 )
-- Apply [size M](artifacts/size-m-quotas.yaml) 
+- Apply [size M](../artifacts/size-m-quotas.yaml) 
 ```bash
 oc login --insecure-skip-tls-verify=true --server=$OCP --username=opentlc-mgr
 oc apply -f artifacts/size-m-quotas.yaml -n namespace-2
@@ -171,7 +171,7 @@ oc scale dc/backend --replicas=12 -n namespace-2
 oc get pods -n namespace-2 | grep backend | grep Running | wc -l
 ```
 
-- Reapply [size S](artifacts/size-s-quotas.yaml) and check resource quotas
+- Reapply [size S](../artifacts/size-s-quotas.yaml) and check resource quotas
 ```bash
 oc apply -f artifacts/size-s-quotas.yaml -n namespace-2
 oc delete -f artifacts/size-m-quotas.yaml -n namespace-2
@@ -218,7 +218,7 @@ tmpfs                                    31474     0     31474   0% /sys/firmwar
 
 ![namespace-2 storage quotas](images/namespace-2-storage-quotas.png)
 
-- Create new deployment ([dummy-with-pvc.yaml](artifacts/dummy-with-pvc.yaml)) with 2 GB persistent volume claim
+- Create new deployment ([dummy-with-pvc.yaml](../artifacts/dummy-with-pvc.yaml)) with 2 GB persistent volume claim
 ```bash
 oc apply -f artifacts/dummy.yaml -n namespace-2
 oc set volume dc/dummy --add --name=data --type=persistentVolumeClaim --claim-name=data2 \
