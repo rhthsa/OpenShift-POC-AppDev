@@ -43,7 +43,7 @@ graph LR
 
 ### Project: namespace-1
 
-Frontend App in namespace namespace-1 accept only request from OpenShift's router in namespace openshift-ingress by apply policy [deny all](artifacts/network-policy-deny-from-all.yaml) and [accept from ingress](artifacts/network-policy-allow-network-policy-global.yaml)
+Frontend App in namespace namespace-1 accept only request from OpenShift's router in namespace openshift-ingress by apply policy [deny all](../artifacts/network-policy-deny-from-all.yaml) and [accept from ingress](../artifacts/network-policy-allow-network-policy-global.yaml)
 
 - Default network policy
 ```bash
@@ -57,7 +57,7 @@ allow-from-ingress-namespace   <none>         152m
 ```bash
 oc delete networkpolicy/allow-from-ingress-namespace -n namespace-1
 ```
-<!-- - Apply network policy to default with [network-policy-deny-from-all.yaml](artifacts/network-policy-deny-from-all.yaml)
+<!-- - Apply network policy to default with [network-policy-deny-from-all.yaml](../artifacts/network-policy-deny-from-all.yaml)
 ```bash
 oc apply -f artifacts/network-policy-deny-from-all.yaml -n namespace-1
 oc apply -f artifacts/allow-network-policy-global.yaml -n namespace-1
@@ -232,7 +232,7 @@ curl $FRONTEND_URL
 The server didn't respond in time.
 </body></html>
 ```
-- For egress traffic, set [egress firewall](artifacts/egress-namespace-2.yaml) to allow only [httpbin.org](https://httpbin.org)
+- For egress traffic, set [egress firewall](../artifacts/egress-namespace-2.yaml) to allow only [httpbin.org](https://httpbin.org)
 ```bash
 oc delete egressnetworkpolicy/egress-namespace-2 -n namespace-2
 oc apply -f artifacts/egress-namespace-2.yaml -n namespace-2

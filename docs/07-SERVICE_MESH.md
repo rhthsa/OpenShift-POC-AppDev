@@ -102,7 +102,7 @@ oc apply -f artifacts/backend-destination-rule.yaml -n namespace-2
 oc apply -f artifacts/backend-virtual-service.yaml -n namespace-2
 oc apply -f artifacts/backend-authenticate-mtls.yaml -n namespace-2
 ```
-- Create [dummy pod](artifacts/dummy.yaml) (without sidecar) on namespace-1 
+- Create [dummy pod](../artifactss/dummy.yaml) (without sidecar) on namespace-1 
 ```bash
 oc apply -f artifacts/dummy.yaml -n namespace-1
 ```
@@ -121,14 +121,14 @@ oc exec -c frontend $(oc get pods -n namespace-1 | grep frontend | grep Running 
 - cURL to frontend's route to verify that route still working properly.
 
 ## Secure frontend with JWT
-- Create [destination rule](artifacts/frontend-destination-rule.yaml), [gateway](artifacts/frontend-gateway.yaml) and [virtual service](artifacts/frontend-virtual-service.yaml) for frontend
+- Create [destination rule](../artifactss/frontend-destination-rule.yaml), [gateway](../artifactss/frontend-gateway.yaml) and [virtual service](../artifactss/frontend-virtual-service.yaml) for frontend
 ```bash
 oc apply -f artifacts/frontend-destination-rule.yaml -n namespace-1
 oc apply -f artifacts/frontend-gateway.yaml -n namespace-1
 oc apply -f artifacts/frontend-virtual-service.yaml -n namespace-1
 echo "Istio Gateway URL=> https://$(oc get route istio-ingressgateway -o jsonpath='{.spec.host}' -n user1-istio-system)"
 ```
-- Enable [JWT authorization](artifacts/frontend-jwt-with-mtls.yaml) for frontend
+- Enable [JWT authorization](../artifactss/frontend-jwt-with-mtls.yaml) for frontend
 ```bash
 oc apply -f artifacts/frontend-jwt-with-mtls.yaml -n namespace-1
 ```
@@ -162,7 +162,7 @@ oc delete -f artifacts/egress-namespace-2.yaml -n namespace-2
   | sed 's/mode: ALLOW_ANY/mode: REGISTRY_ONLY/g' \
   | oc replace -n user1-istio-system -f -
 ```
-- Create [egerss service entry](artifacts/egress-serviceentry.yml) to allow https request to httpbin.org
+- Create [egerss service entry](../artifactss/egress-serviceentry.yml) to allow https request to httpbin.org
 ```bash
 oc apply -f artifacts/egress-serviceentry.yml -n user1-istio-system
 ```
