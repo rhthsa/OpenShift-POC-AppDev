@@ -3,6 +3,8 @@
 
 - [Application Deployment](#application-deployment)
   - [Deploy Frontend app](#deploy-frontend-app)
+    - [From Source Code](#from-source-code)
+    - [YAML](#yaml)
   - [Deploy Application from Catalog](#deploy-application-from-catalog)
   - [Verify Installation](#verify-installation)
     - [Developer Console](#developer-console)
@@ -34,6 +36,15 @@ graph LR
 
 
 ## Deploy Frontend app
+
+### From Source Code
+- Login to Developer Console with user1
+  
+  ![](images/dev-console-s2i.png)
+
+- WIP
+
+### YAML 
 - Deploy frontend app with [frontend.yaml](artifacts/frontend.yaml) and [frontend-service.yaml](artifacts/frontend-service.yaml)
 ```bash
 oc login --insecure-skip-tls-verify=true --server=$OCP --username=user1

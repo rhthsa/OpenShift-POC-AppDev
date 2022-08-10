@@ -2,8 +2,9 @@
 <!-- TOC -->
 
 - [Project (Tenant/Namespace) Management](#project-tenantnamespace-management)
-  - [RESTful APIs](#restful-apis)
+  - [Admin Console](#admin-console)
   - [Command Line with oc](#command-line-with-oc)
+  - [RESTful APIs](#restful-apis)
 
 <!-- /TOC -->
 
@@ -28,12 +29,44 @@ graph LR
 
 ```
 
+## Admin Console
+- Login with Admin user
+- Switch to Administrator Console. Home->Projects and click *Create project*
+  
+  ![](images/admin-console-create-namespace-1.png)
+
+- Switch to Developer Console. Project->Project access then add *user1* with Role *Edit*
+
+  ![](images/admin-console-update-role-to-user.png)
+## Command Line with oc
+- Create namespace-2 for user1 and namespace-3 for user2
+
+```bash
+oc login --insecure-skip-tls-verify=true --server=$OCP --username=opentlc-mgr
+oc new-project namespace-2 --display-name="Namespace 2"
+oc label namespace namespace-2 name=namespace-2
+oc new-project namespace-3 --display-name="Namespace 3"
+oc label namespace namespace-3 name=namespace-3
+oc policy add-role-to-user edit user1 -n namespace-2
+oc policy add-role-to-user edit user2 -n namespace-3
+```
+
+- Assign [size S quotas](../artifacts/size-s-quotas.yaml) to namespace-2 and namespace-3
+
+```bash
+oc apply -f artifacts/size-s-quotas.yaml -n namespace-2
+oc apply -f artifacts/size-s-quotas.yaml -n namespace-3
+```
+
 ## RESTful APIs
 - Get Token
+ 
 ```bash
 TOKEN=$(oc whoami -t)
 ```
+
 - Create project namespace-1
+
 ```bash
 curl --verbose --insecure -location --request POST ${OCP}'/apis/project.openshift.io/v1/projectrequests' \
 --header 'Accept: application/json' \
@@ -49,7 +82,9 @@ curl --verbose --insecure -location --request POST ${OCP}'/apis/project.openshif
     "displayName": "Namespace 1"
 }'
 ```
+
 - Label project namespace-1
+
 ```bash
 curl --verbose --insecure --location --request PATCH ${OCP}'/api/v1/namespaces/namespace-1' \
 --header 'Accept: application/json' \
@@ -57,7 +92,9 @@ curl --verbose --insecure --location --request PATCH ${OCP}'/api/v1/namespaces/n
 --header 'Authorization: Bearer '${TOKEN} \
 --data '{"metadata":{"labels":{"name":"namespace-1"}}}'
 ```
+
 - Assign user1 with role **edit** to namespace-1 
+
 ```bash
 curl --verbose --insecure --location --request POST ${OCP}'/apis/authorization.openshift.io/v1/namespaces/namespace-1/rolebindings' \
 --header 'Accept: application/json' \
@@ -85,7 +122,9 @@ curl --verbose --insecure --location --request POST ${OCP}'/apis/authorization.o
     ]
 }'
 ```
+
 - Assign [size S quotas](artifacts/size-s-quotas.yaml) to namespace-1
+
 ```bash
 curl --verbose --insecure --location --request POST ${OCP}'/api/v1/namespaces/namespace-1/resourcequotas' \
 --header 'Accept: application/json' \
@@ -109,21 +148,4 @@ curl --verbose --insecure --location --request POST ${OCP}'/api/v1/namespaces/na
     }
   }
 }'
-```
-
-## Command Line with oc
-- Create namespace-2 for user1 and namespace-3 for user2
-```bash
-oc login --insecure-skip-tls-verify=true --server=$OCP --username=opentlc-mgr
-oc new-project namespace-2 --display-name="Namespace 2"
-oc label namespace namespace-2 name=namespace-2
-oc new-project namespace-3 --display-name="Namespace 3"
-oc label namespace namespace-3 name=namespace-3
-oc policy add-role-to-user edit user1 -n namespace-2
-oc policy add-role-to-user edit user2 -n namespace-3
-```
-- Assign [size S quotas](artifacts/size-s-quotas.yaml) to namespace-2 and namespace-3
-```bash
-oc apply -f artifacts/size-s-quotas.yaml -n namespace-2
-oc apply -f artifacts/size-s-quotas.yaml -n namespace-3
 ```
